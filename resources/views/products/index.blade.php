@@ -108,9 +108,9 @@
 
                             <td>
                                 
-                                <a :href="`/products/${item.id}`" class="btn btn-info btn-sm">Show</a>
+                                <a :href="`admin/products/${item.id}`" class="btn btn-info btn-sm">Show</a>
 
-                                <a :href="`/products/${item.id}/edit`" class="btn btn-primary btn-sm">Edit</a>
+                                <a :href="`admin/products/${item.id}/edit`" class="btn btn-primary btn-sm">Edit</a>
                             </td>
                         </tr>
                     </template>

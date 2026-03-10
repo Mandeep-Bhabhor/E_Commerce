@@ -175,7 +175,7 @@
                 console.log('Updating to:', status);
 
                 $.ajax({
-                    url: '/order-items/' + itemId + '/status',
+                    url: "{{ route('order.items.updateStatus','id') }}".replace('id',itemId),
                     type: 'POST', // use POST instead of PUT
                     data: {
                         _method: 'PUT', // Laravel spoofing
@@ -189,7 +189,6 @@
                     error: function(xhr) {
                         console.log(xhr.responseText);
                         alert('Update failed');
-
                         // revert dropdown to previous value if failed
                         location.reload();
                     }
@@ -217,7 +216,7 @@
                 console.log('Updating to:', status);
 
                 $.ajax({
-                    url: '/order/' + orderId + '/status',
+                    url: "{{ route('order.updateStatus', ':id') }}".replace(':id', orderId),
                     type: 'POST', // use POST instead of PUT
                     data: {
                         _method: 'PUT', // Laravel spoofing

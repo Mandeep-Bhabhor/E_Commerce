@@ -25,9 +25,10 @@ return Application::configure(basePath: dirname(__DIR__))
             return route('login');
         });
 
-         $middleware->alias([
-            'isAdmin' => AdminMiddleware::class,
-           
+        $middleware->alias([
+            // 'isAdmin' => AdminMiddleware::class,
+            'admin' => \App\Http\Middleware\EnsureIsAdmin::class,
+            'customer' => \App\Http\Middleware\EnsureIsCustomer::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
