@@ -22,8 +22,8 @@
                     @foreach ($products as $product)
                         @php
                             $images = json_decode($product->image, true) ?? [];
-                            $sizeIds = json_decode($product->size, true) ?? [];
-                            $colorIds = json_decode($product->color, true) ?? [];
+                            $sizeIds = $product->size ?? [];
+                            $colorIds = $product->color ?? [];
 
                             $sizes = \App\Models\Size::whereIn('id', $sizeIds)->get();
                             $colors = \App\Models\Color::whereIn('id', $colorIds)->get();

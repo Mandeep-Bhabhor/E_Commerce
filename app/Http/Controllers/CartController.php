@@ -63,11 +63,11 @@ class CartController extends Controller
         $products = Product::Where('status', 'active')->latest()->paginate(5);
         foreach ($products as $product) {
 
-            $sizeIds = json_decode($product->size, true) ?? [];
+            $sizeIds = $product->size ?? [];
             $productSizes = Size::whereIn('id', $sizeIds)->get();
 
             // colors
-            $colorIds = json_decode($product->color, true) ?? [];
+            $colorIds = $product->color ?? [];
             $productColors = Color::whereIn('id', $colorIds)->get();
             // // categories
             // $categoryIds = json_decode($product->category, true) ?? [];

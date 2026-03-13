@@ -10,6 +10,7 @@ return Application::configure(basePath: dirname(__DIR__))
         web: [
             __DIR__.'/../routes/web.php',
             __DIR__.'/../routes/frontend.php', ],
+        api: __DIR__.'/../routes/api.php', // Move it here! 📍
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
         // then: function () {

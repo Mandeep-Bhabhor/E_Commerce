@@ -2,8 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
 class Product extends Model
 {
@@ -18,6 +18,28 @@ class Product extends Model
         'color',
         'price',
         'status',
-        'category'
+        'category',
+    ];
+
+    public function sizes()
+    {
+        return $this->belongsToMany(Size::class);
+    }
+
+    public function colors()
+    {
+        return $this->belongsToMany(Color::class);
+    }
+
+    public function categories()
+    {
+        return $this->belongsToMany(Category::class);
+    }
+
+
+    protected $casts = [
+        'size' => 'array',
+        'color' => 'array',
+        'category' => 'array',
     ];
 }

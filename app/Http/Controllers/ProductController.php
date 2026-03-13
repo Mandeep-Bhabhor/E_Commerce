@@ -23,15 +23,15 @@ class ProductController extends Controller
         $products = Product::Where('status', 'active')->latest()->paginate(5);
         foreach ($products as $product) {
 
-            $sizeIds = json_decode($product->size, true) ?? [];
+            $sizeIds = $product->size ?? [];
             $product->size_names = Size::whereIn('id', $sizeIds)->pluck('name')->toArray();
 
             // colors
-            $colorIds = json_decode($product->color, true) ?? [];
+            $colorIds = $product->color ?? [];
             $product->color_names = Color::whereIn('id', $colorIds)->pluck('name')->toArray();
 
             // categories
-            $categoryIds = json_decode($product->category, true) ?? [];
+            $categoryIds = $product->category ?? [];
             $product->category_names = Category::whereIn('id', $categoryIds)->pluck('name')->toArray();
         }
 
@@ -88,15 +88,15 @@ class ProductController extends Controller
     public function show(Product $product): View
     {
 
-        $sizeIds = json_decode($product->size, true) ?? [];
+        $sizeIds = $product->size ?? [];
         $product->size_names = Size::whereIn('id', $sizeIds)->pluck('name')->toArray();
 
         // colors
-        $colorIds = json_decode($product->color, true) ?? [];
+        $colorIds = $product->color ?? [];
         $product->color_names = Color::whereIn('id', $colorIds)->pluck('name')->toArray();
 
         // categories
-        $categoryIds = json_decode($product->category, true) ?? [];
+        $categoryIds = $product->category ?? [];
         $product->category_names = Category::whereIn('id', $categoryIds)->pluck('name')->toArray();
 
         return view('products.show', compact('product'));
@@ -119,7 +119,7 @@ class ProductController extends Controller
      */
     public function update(ProductUpdateRequest $request, Product $product): RedirectResponse
     {
-       // echo "hello";
+        // echo "hello";
         $data = $request->validated();
         $data['size'] = json_encode($request->sizes);
         $data['category'] = json_encode($request->categories);
@@ -234,6 +234,7 @@ class ProductController extends Controller
             $product->color_names = Color::whereIn('id', $colorIds)->pluck('name');
 
             $categoryIds = json_decode($product->category, true) ?? [];
+
             $product->category_names = Category::whereIn('id', $categoryIds)->pluck('name');
 
             return $product;
@@ -246,7 +247,4 @@ class ProductController extends Controller
     {
         return view('new_route');
     }
-
-   
-    
 }
