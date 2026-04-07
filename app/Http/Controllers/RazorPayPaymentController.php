@@ -53,7 +53,7 @@ class RazorPayPaymentController extends Controller
 
         // Save Razorpay reference
         $order->update([
-            'razorpay_order_id' => $razorpayOrder['id'],
+            'gateway_order_id' => $razorpayOrder['id'],
             'payment_method' => 'online',
             'payment_status' => 'pending',
         ]);
@@ -92,7 +92,7 @@ class RazorPayPaymentController extends Controller
 
             // UPDATE PAYMENT DETAILS
             $order->update([
-                'razorpay_payment_id' => $request->razorpay_payment_id,
+                'transaction_id' => $request->razorpay_payment_id,
                 'razorpay_signature' => $request->razorpay_signature,
                 'payment_status' => 'paid',
                 'paid_at' => now()

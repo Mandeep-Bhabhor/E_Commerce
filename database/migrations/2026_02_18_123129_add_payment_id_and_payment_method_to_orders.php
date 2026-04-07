@@ -13,9 +13,8 @@ return new class extends Migration
     {
         Schema::table('orders', function (Blueprint $table) {
             //
-            $table->enum('payment_method',['cod','online'])->default('cod');
-
-            $table->enum('payment_status',['pending','paid','refunded'])->default('pending');
+            $table->enum('payment_method', ['cod', 'razorpay', 'paypal'])->default('cod');
+            $table->enum('payment_status', ['pending', 'paid', 'refunded'])->default('pending');
 
             $table->string('razorpay_order_id')->nullable();
             $table->string('razorpay_payment_id')->nullable();

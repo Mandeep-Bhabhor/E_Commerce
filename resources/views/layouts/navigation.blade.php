@@ -43,6 +43,10 @@
                         <x-nav-link :href="route('discounts.index')" :active="request()->routeIs('discounts.*')">
                             Discount
                         </x-nav-link>
+
+                        <x-nav-link :href="route('admin.orders.index')">
+                            Orders
+                        </x-nav-link>
                     @else
                         <x-nav-link :href="route('customer.dashboard')" :active="request()->routeIs('customer.dashboard')">
                             Dashboard

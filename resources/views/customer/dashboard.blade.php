@@ -1,4 +1,7 @@
-<x-app-layout>
+@extends('layouts.customer')
+
+@section('content')
+
     <x-slot name="header">
         <h2 class="text-xl font-semibold text-gray-800">
             Dashboard
@@ -71,4 +74,4 @@
         </div>
 
     </div>
-</x-app-layout>
+@endsection

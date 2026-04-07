@@ -65,6 +65,7 @@ class DiscountController extends Controller
      */
     public function update(UpdateDiscountRequest $request, string $id): RedirectResponse
     {
+       // dd($request);
         $discount = Discount::findOrFail($id);
 
         $discount->update($request->validated());

@@ -1,4 +1,4 @@
-@extends('products.customer_layout')
+@extends('layouts.customer')
 
 @section('content')
     <div x-data="productSearch()">
@@ -21,7 +21,7 @@
 
                     @foreach ($products as $product)
                         @php
-                            $images = json_decode($product->image, true) ?? [];
+                            $images = $product->image ?? [];
                             $sizeIds = $product->size ?? [];
                             $colorIds = $product->color ?? [];
 

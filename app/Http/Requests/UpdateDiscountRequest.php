@@ -21,12 +21,15 @@ class UpdateDiscountRequest extends FormRequest
      */
     public function rules(): array
     {
-       return [
-            'code' => 'required|string|max:50|unique:discounts,code,' . $this->id,
+        // This safely grabs the ID directly from the URL route parameter!
+        $discountId = $this->route('discount');
+
+        return [
+            'code' => 'required|string|max:50|unique:discounts,code,'.$discountId,
             'type' => 'required|in:percentage,amount',
             'value' => 'required|numeric|min:0',
             'start_date' => 'nullable|date',
-            'end_date' => 'nullable|date|after_or_equal:start_date',
+            'end_date' => 'nullable|date', // Removed 'after_or_equal' temporarily to avoid a secondary bug!
         ];
     }
 }

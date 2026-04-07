@@ -1,4 +1,4 @@
-@extends('products.layout')
+@extends('layouts.admin')
 
 @section('content')
     <div class="card mt-5">
@@ -34,9 +34,9 @@
                 </div>
 
                 @php
-                    $savedCategories = json_decode($product->category, true) ?? [];
-                    $savedColors = json_decode($product->color, true) ?? [];
-                    $savedSizes = json_decode($product->size, true) ?? [];
+                    $savedCategories = $product->category;
+                    $savedColors = $product->color;
+                    $savedSizes = $product->size;
 
                 @endphp
 
@@ -95,7 +95,7 @@
                         <strong>Images:</strong><br />
 
                         @php
-                            $images = json_decode($product->image, true);
+                            $images = $product->image;
                         @endphp
 
                         <div class="row g-2" id="existing-images">

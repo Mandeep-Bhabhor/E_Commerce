@@ -1,6 +1,11 @@
-@extends('products.customer_layout')
+@extends('layouts.customer')
 
 @section('content')
+@if (session('error'))
+    <div class="alert alert-danger fw-bold">
+        🚨 {{ session('error') }}
+    </div>
+@endif
     <div class="container mt-4">
 
         <h3 class="mb-4">
@@ -18,7 +23,7 @@
                         {{ $address->city }}, {{ $address->state }} - {{ $address->pincode }}
                     </p>
                 @else
-                    <div class="alert alert-danger">No address selected.</div>
+                    <div class="alert alert-danger">No address selected. Please add an address to continue.</div>
                 @endif
             </div>
         </div>
@@ -63,9 +68,7 @@
                         @foreach ($discounts as $discount)
                             <option value="{{ $discount->id }}"
                                 {{ $selectedDiscountId == $discount->id ? 'selected' : '' }}>
-
                                 {{ $discount->code }}
-
                             </option>
                         @endforeach
 
@@ -87,7 +90,7 @@
                         <strong>Discount:</strong> ₹ {{ $discountAmount }}
                     </p>
 
-                    <h4 class="mt-2">
+                    <h4 class="mt-2 text-primary">
                         Grand Total: ₹ {{ $grandTotal }}
                     </h4>
 
@@ -97,30 +100,51 @@
         </div>
 
         {{-- PAYMENT METHOD --}}
-        <div class="card">
-            <div class="card-header">Payment Method</div>
+        <div class="card border-primary mb-5">
+            <div class="card-header bg-primary text-white">Payment Method</div>
 
             <div class="card-body">
 
                 <form action="{{ route('order.store') }}" method="POST">
                     @csrf
 
-                    <div class="mb-3">
+                    {{-- Hidden input to pass the selected discount to the controller --}}
+                    <input type="hidden" name="discount_id" value="{{ $selectedDiscountId }}">
 
-                        <label class="me-4">
-                            <input type="radio" name="payment_method" value="cod" checked>
-                            Cash on Delivery
-                        </label>
-                        <input type="hidden" name="discount_id" value="{{ $selectedDiscountId }}">
-                        <label class="me-4">
-                            <input type="radio" name="payment_method" value="online">
-                            Pay Online (Razorpay)
-                        </label>
+                    <div class="mb-4 mt-2">
+
+                        {{-- Option 1: Cash on Delivery --}}
+                        <div class="form-check form-check-inline me-4">
+                            <input class="form-check-input" type="radio" name="payment_method" id="pay_cod"
+                                value="cod" checked>
+                            <label class="form-check-label fw-bold" for="pay_cod">
+                                <i class="fa fa-truck text-muted me-1"></i> Cash on Delivery
+                            </label>
+                        </div>
+
+                        {{-- Option 2: Razorpay --}}
+                        <div class="form-check form-check-inline me-4">
+                            <input class="form-check-input" type="radio" name="payment_method" id="pay_razorpay"
+                                value="razorpay">
+                            <label class="form-check-label fw-bold" for="pay_razorpay">
+                                <i class="fa fa-credit-card text-info me-1"></i> Razorpay (Cards/UPI)
+                            </label>
+                        </div>
+
+                        {{-- Option 3: PayPal --}}
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="radio" name="payment_method" id="pay_paypal"
+                                value="paypal">
+                            <label class="form-check-label fw-bold" for="pay_paypal">
+                                <i class="fa fa-paypal text-primary me-1"></i> PayPal (International)
+                            </label>
+                        </div>
 
                     </div>
 
-                    <button class="btn btn-success w-100">
-                        Continue
+                    <button type="submit" class="btn btn-success w-100 fw-bold"
+                        @if (!$address) disabled @endif>
+                        Place Order & Continue
                     </button>
 
                 </form>

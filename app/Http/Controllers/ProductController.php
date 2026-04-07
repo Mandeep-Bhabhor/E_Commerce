@@ -59,11 +59,13 @@ class ProductController extends Controller
         $data = $request->validated();
         $imageNames = [];
 
-        $data['size'] = json_encode($request->sizes);
-        $data['category'] = json_encode($request->categories);
-        $data['color'] = json_encode($request->colors);
+        // ✅ FIX: Just assign the raw arrays!
+        // Laravel will automatically JSON encode them behind the scenes.
+        $data['size'] = $request->sizes;
+        $data['category'] = $request->categories;
+        $data['color'] = $request->colors;
 
-        // HANDLE SINGLE IMAGE
+        // HANDLE MULTIPLE IMAGES
         if ($request->hasFile('images')) {
             foreach ($request->file('images') as $image) {
 
@@ -72,10 +74,14 @@ class ProductController extends Controller
 
                 $imageNames[] = $imageName;
             }
-
         }
-        $data['image'] = json_encode($imageNames);
+
+        // ✅ FIX: Pass the array of images as well.
+        // (Make sure 'image' => 'array' is in your Product model's $casts list too!)
+        $data['image'] = $imageNames;
+
         $data['status'] = 'active';
+
         Product::create($data);
 
         return redirect()->route('products.index')
@@ -125,13 +131,13 @@ class ProductController extends Controller
         $data['category'] = json_encode($request->categories);
         $data['color'] = json_encode($request->colors);
         // //got the image field from DB and checked tat it array or not
-        $imageNames = json_decode($product->image, true);
+        $imageNames = $product->image;
         if (! is_array($imageNames)) {
             $imageNames = [];
         }
 
         if ($request->filled('removed_images')) {
-            $removeIndexes = json_decode($request->removed_images, true);
+            $removeIndexes = $request->removed_images;
 
             foreach ($removeIndexes as $index) {
                 if (isset($imageNames[$index])) {

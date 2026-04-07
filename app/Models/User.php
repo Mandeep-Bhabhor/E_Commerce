@@ -25,6 +25,10 @@ class User extends Authenticatable
         'social_provider',
         'social_id',
         'avatar',
+        'phone_number',
+        'otp',
+        'otp_expires_at',
+        'fcm_token'
     ];
 
     /**

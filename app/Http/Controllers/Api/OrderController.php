@@ -8,8 +8,13 @@ use App\Models\Discount;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\Tax;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Kreait\Firebase\Factory;
+use Kreait\Firebase\Messaging\CloudMessage;
+use Kreait\Firebase\Messaging\Notification;
 
 class OrderController extends Controller
 {
@@ -129,6 +134,7 @@ class OrderController extends Controller
             }
 
             DB::commit();
+            $this->notifyAdmin($order);
 
             return response()->json([
                 'status' => 'success',
@@ -175,5 +181,37 @@ class OrderController extends Controller
     public function destroy(string $id)
     {
         //
+    }
+
+
+        private function notifyAdmin($order)
+    {
+        // 1. Find the Admin (User ID 1)
+        $admin = User::find(3);
+
+        // 2. If they exist and have a token, build the message
+        if ($admin && $admin->fcm_token) {
+            try {
+                // Setup Firebase
+                $firebase = (new Factory)->withServiceAccount(base_path(env('FIREBASE_CREDENTIALS')));
+                $messaging = $firebase->createMessaging();
+
+                // Build the Notification (Now with dynamic Order info!)
+                // Build the Notification (Using the modern Firebase v7+ syntax!)
+                $message = CloudMessage::new()
+                    ->toToken($admin->fcm_token)
+                    ->withNotification(Notification::create(
+                        '🚨 New Order Received!',
+                        "Order #{$order->id} was just placed. Check the dashboard!"
+                    ));
+
+                // Fire it off!
+                $messaging->send($message);
+
+            } catch (\Exception $e) {
+                // Log errors silently so the customer's checkout doesn't crash
+                Log::error('Firebase Notification Failed: '.$e->getMessage());
+            }
+        }
     }
 }

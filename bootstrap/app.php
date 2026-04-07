@@ -30,6 +30,7 @@ return Application::configure(basePath: dirname(__DIR__))
             // 'isAdmin' => AdminMiddleware::class,
             'admin' => \App\Http\Middleware\EnsureIsAdmin::class,
             'customer' => \App\Http\Middleware\EnsureIsCustomer::class,
+            '2fa' => \App\Http\Middleware\Ensure2FAIsVerified::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

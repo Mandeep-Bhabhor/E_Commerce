@@ -36,10 +36,13 @@ class Product extends Model
         return $this->belongsToMany(Category::class);
     }
 
-
-    protected $casts = [
-        'size' => 'array',
-        'color' => 'array',
-        'category' => 'array',
-    ];
+    protected function casts(): array
+    {
+        return [
+            'size' => 'array',
+            'color' => 'array',
+            'category' => 'array',
+            'image' => 'array', // Make sure this is here!
+        ];
+    }
 }

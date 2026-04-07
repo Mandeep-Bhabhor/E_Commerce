@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Cart;
 use App\Models\Product;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class CartController extends Controller
 {
@@ -134,5 +135,25 @@ class CartController extends Controller
     $cart->delete();
 
     return response()->json(['message' => 'Item removed from cart']);
+    }
+
+
+     public function cart_truncate(Request $request)
+    {
+
+        // Security Check
+        $secretKey = env('SCHEDULER_KEY');
+
+        if ($request->header('X-API-KEY') !== $secretKey) {
+            return response()->json(['message' => 'Unauthorized'], 401);
+        }
+
+        // Action
+        Cart::truncate();
+        Log::info('API Trigger: Carts were cleared manually by Admin.');
+
+        // Response
+        return response()->json(['message' => 'All carts have been successfully emptied!'], 200);
+
     }
 }

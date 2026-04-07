@@ -8,6 +8,7 @@ use App\Models\Product;
 use App\Models\Size;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Illuminate\View\View;
 
 class CartController extends Controller
@@ -27,27 +28,27 @@ class CartController extends Controller
     }
 
     public function update(Request $request, $id)
-{
-    $cart = Cart::findOrFail($id);
+    {
+        $cart = Cart::findOrFail($id);
 
-    $qty = $request->qty ?? 1;
-    if ($qty < 1) $qty = 1;
+        $qty = $request->qty ?? 1;
+        if ($qty < 1) {
+            $qty = 1;
+        }
 
-    $cart->qty = $qty;
-    $cart->total = $cart->price * $qty;
-    $cart->save();
+        $cart->qty = $qty;
+        $cart->total = $cart->price * $qty;
+        $cart->save();
 
-     $grandTotal = Cart::where('user_id', auth()->id())
-        ->sum('total');
+        $grandTotal = Cart::where('user_id', auth()->id())
+            ->sum('total');
 
-
-    return response()->json([
-        'qty' => $cart->qty,
-        'total' => $cart->total,
-        'grand_total' => $grandTotal
-    ]);
-}
-
+        return response()->json([
+            'qty' => $cart->qty,
+            'total' => $cart->total,
+            'grand_total' => $grandTotal,
+        ]);
+    }
 
     public function remove($id)
     {
@@ -152,11 +153,32 @@ class CartController extends Controller
         return back()->with('success', 'Product added to cart');
     }
 
-    public function destroy(){
+    public function destroy()
+    {
         $userId = Auth::id();
 
-        $clear = Cart::where('user_id',$userId)->get();
-       Cart::destroy($clear);
+        $clear = Cart::where('user_id', $userId)->get();
+        Cart::destroy($clear);
+
         return back()->with('success', 'Cart cleared');
+    }
+
+    public function cart_truncate(Request $request)
+    {
+
+        // Security Check
+        $secretKey = env('SCHEDULER_KEY');
+
+        if ($request->header('X-API-KEY') !== $secretKey) {
+            return response()->json(['message' => 'Unauthorized'], 401);
+        }
+
+        // Action
+        Cart::truncate();
+        Log::info('API Trigger: Carts were cleared manually by Admin.');
+
+        // Response
+        return response()->json(['message' => 'All carts have been successfully emptied!'], 200);
+
     }
 }

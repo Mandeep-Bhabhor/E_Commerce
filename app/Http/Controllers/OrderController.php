@@ -7,16 +7,20 @@ use App\Events\OrderPlaced;
 use App\Events\OrderStatusUpdated as EventsOrderStatusUpdated;
 use App\Events\ReturnStatusUpdated;
 use App\Events\UserReturnProduct as EventsUserReturnProduct;
-use App\Mail\ReturnStatusUpdated as MailReturnStatusUpdated;
 use App\Models\Address;
 use App\Models\Cart;
 use App\Models\Discount;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Tax;
+use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Kreait\Firebase\Factory;
+use Kreait\Firebase\Messaging\CloudMessage;
+use Kreait\Firebase\Messaging\Notification;
 use Symfony\Component\HttpFoundation\Request;
 
 use function Symfony\Component\Clock\now;
@@ -26,6 +30,7 @@ class OrderController extends Controller
     //
     public function store_order(Request $request)
     {
+        // dd($request);
         $userId = Auth::id();
         $paymentMethod = $request->payment_method;
         $addressId = session('checkout_address_id');
@@ -56,7 +61,7 @@ class OrderController extends Controller
         // 🔹 2. Discount
         $discountAmount = 0;
         $discountId = $request->discount_id;
-
+        // dd($discountId);
         if ($discountId) {
 
             $discount = Discount::where('id', $discountId)
@@ -69,11 +74,12 @@ class OrderController extends Controller
                         ->orWhere('end_date', '>=', now());
                 })
                 ->first();
-
+            //   dd($discount);
             if ($discount) {
 
                 if ($discount->type === 'percentage') {
                     $discountAmount = ($subtotal * $discount->value) / 100;
+                    // dd($discountAmount);
                 }
 
                 if ($discount->type === 'amount') {
@@ -102,6 +108,7 @@ class OrderController extends Controller
 
         // 🔹 5. Final Total
         $grandTotal = round($subtotal - $discountAmount + $taxAmount + $shippingAmount);
+        //  dd($grandTotal,$taxAmount,$subtotal,$discountAmount);
         DB::beginTransaction();
 
         try {
@@ -135,7 +142,8 @@ class OrderController extends Controller
             DB::commit();
 
             event(new OrderPlaced($order));
-
+            // 3. Trigger the background notification!
+            $this->notifyAdmin($order);
             if ($paymentMethod === 'cod') {
                 $order->update(['payment_status' => 'paid']);
 
@@ -148,9 +156,16 @@ class OrderController extends Controller
                 ]);
             }
 
+            if ($paymentMethod === 'paypal') {
+                return redirect()->route('paypal.process', [
+                    'order' => $order->id,
+                ]);
+            }
+
         } catch (\Exception $e) {
 
             DB::rollback();
+            dd('STOP! Here is the actual error: '.$e->getMessage());
 
             return back()->with('error', 'Order failed. Try again');
         }
@@ -379,7 +394,7 @@ class OrderController extends Controller
     {
 
         $item = OrderItem::findOrFail($id);
-       //$oldStatus = $item->
+        // $oldStatus = $item->
         $item->update([
             'is_returned' => true,
             'returned_at' => Carbon::now(),
@@ -401,5 +416,39 @@ class OrderController extends Controller
 
         return back()->with('success', 'Return request rejected');
 
+    }
+
+    /**
+     * Send a Firebase Push Notification to the Admin
+     */
+    private function notifyAdmin($order)
+    {
+        // 1. Find the Admin (User ID 1)
+        $admin = User::find(3);
+
+        // 2. If they exist and have a token, build the message
+        if ($admin && $admin->fcm_token) {
+            try {
+                // Setup Firebase
+                $firebase = (new Factory)->withServiceAccount(base_path(env('FIREBASE_CREDENTIALS')));
+                $messaging = $firebase->createMessaging();
+
+                // Build the Notification (Now with dynamic Order info!)
+                // Build the Notification (Using the modern Firebase v7+ syntax!)
+                $message = CloudMessage::new()
+                    ->toToken($admin->fcm_token)
+                    ->withNotification(Notification::create(
+                        '🚨 New Order Received!',
+                        "Order #{$order->id} was just placed. Check the dashboard!"
+                    ));
+
+                // Fire it off!
+                $messaging->send($message);
+
+            } catch (\Exception $e) {
+                // Log errors silently so the customer's checkout doesn't crash
+                Log::error('Firebase Notification Failed: '.$e->getMessage());
+            }
+        }
     }
 }

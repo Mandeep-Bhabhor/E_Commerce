@@ -1,4 +1,4 @@
-@extends('products.layout')
+@extends('layouts.admin')
 
 @section('content')
 
@@ -51,11 +51,13 @@
                             <td width="80px">{{ ++$i }}</td>
 
                             <td>
-                                @php $images = json_decode($product->image, true); @endphp
-                                @foreach ($images as $img)
-                                    <img src="{{ asset('storage/products/' . $img) }}" width="70" height="70"
-                                        style="object-fit:cover;">
-                                @endforeach
+                                {{-- We don't need json_decode because Laravel cast it to an array! --}}
+                                @if(is_array($product->image) || is_object($product->image))
+                                    @foreach ($product->image as $img)
+                                        <img src="{{ asset('storage/products/' . $img) }}" width="70" height="70"
+                                            style="object-fit:cover;">
+                                    @endforeach
+                                @endif
                             </td>
 
                             <td>{{ $product->name }}</td>
