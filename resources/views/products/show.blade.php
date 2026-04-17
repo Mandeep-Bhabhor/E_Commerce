@@ -19,7 +19,7 @@
             <strong>Images:</strong><br/>
 
             @php
-                $images = json_decode($product->image, true);
+                $images = $product->image;
             @endphp
 
             @if(is_array($images) && count($images))

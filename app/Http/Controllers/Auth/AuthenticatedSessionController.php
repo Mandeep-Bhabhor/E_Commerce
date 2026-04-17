@@ -28,10 +28,10 @@ class AuthenticatedSessionController extends Controller
         $request->session()->regenerate();
 
         $user = Auth::user();
-
+        //dd($user);
         // Redirect based on role
         if ($user->role === 'admin') {
-            return redirect()->intended(route('admin.dashboard'));
+            return redirect()->route('admin.dashboard');
         }
 
         // If a customer somehow logs in via Breeze form, redirect them correctly

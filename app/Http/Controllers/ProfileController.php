@@ -3,10 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\ProfileUpdateRequest;
+use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Redirect;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 
 class ProfileController extends Controller
@@ -26,15 +28,45 @@ class ProfileController extends Controller
      */
     public function update(ProfileUpdateRequest $request): RedirectResponse
     {
-        $request->user()->fill($request->validated());
+        $user = $request->user();
 
-        if ($request->user()->isDirty('email')) {
-            $request->user()->email_verified_at = null;
+        // Fill validated name/email fields
+        $user->fill($request->validated());
+
+        // Reset email verification if email changed
+        if ($user->isDirty('email')) {
+            $user->email_verified_at = null;
         }
 
-        $request->user()->save();
+        // Handle profile picture upload
+        if ($request->hasFile('pfp')) {
 
-        return Redirect::route('profile.edit')->with('status', 'profile-updated');
+            $request->validate([
+                'pfp' => [
+                    'nullable',
+                    'image',
+                    'mimes:jpg,jpeg,png,webp',
+                    'max:2048',
+                ],
+            ]);
+
+            // Delete old image if exists
+            if ($user->pfp && Storage::disk('public')->exists($user->pfp)) {
+                Storage::disk('public')->delete($user->pfp);
+            }
+
+            // Store new image
+            $path = $request->file('pfp')->store('profile-pictures', 'public');
+            $user->pfp = $path;
+        }
+
+        $user->save();
+
+        if ($user->role === 'admin') {
+            return Redirect::route('profile.edit')->with('status', 'profile-updated');
+        }
+
+        return Redirect::route('customer.profile')->with('status', 'profile-updated');
     }
 
     /**

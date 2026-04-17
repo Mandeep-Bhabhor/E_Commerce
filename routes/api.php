@@ -1,24 +1,29 @@
 <?php
 
 use App\Http\Controllers\Api\AddressController;
+use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CartController;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\ColorController;
 use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\SizeController;
+use App\Http\Controllers\Auth\SocialAuthController;
+use App\Http\Controllers\TwoFactorController;
 use App\Models\Cart;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/user', function (Request $request) {
-    return $request->user();
+    $user = User::all();
+    return $user;
 })->middleware('auth:sanctum');
 
 // products
-Route::get('/products', [ProductController::class, 'index']);
-Route::get('/products/{id}', [ProductController::class, 'show']);
+Route::get('/products/all', [ProductController::class, 'index'])->middleware('auth:sanctum');
+Route::get('/products/{id}', [ProductController::class, 'show'])->middleware('auth:sanctum');
 Route::post('/products/create', [ProductController::class, 'store']);
 Route::patch('/products/update/{product}', [ProductController::class, 'update']);
 Route::patch('/products/delete/{product}', [ProductController::class, 'destroy']);
@@ -63,3 +68,25 @@ Route::get('carts/{user_id}', [CartController::class, 'index']);
 
 route::post('/carts/truncate',[CartController::class,'cart_truncate']);
 
+
+////2Fa
+
+// ── Social Auth ──────────────────────────────────────────
+// Step 1: Get Auth0 login URL
+Route::get('/auth/google/redirect', [SocialAuthController::class, 'apiRedirectToGoogle']);
+Route::post('/auth/social-login', [SocialAuthController::class, 'apiTokenLogin']);
+
+// Step 2: Exchange Auth0 code for Laravel session + return status
+Route::get('/auth/callback', [SocialAuthController::class, 'apiHandleCallback']);
+
+// ── 2FA ─────────────────────────────────────────────────
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/2fa/setup',          [TwoFactorController::class, 'apiSetup']);
+    Route::post('/2fa/setup/verify',  [TwoFactorController::class, 'apiVerifySetup']);
+    Route::post('/2fa/verify',        [TwoFactorController::class, 'apiVerify']);
+      Route::post('logout',[AuthController::class,'logout']);
+      Route::post('/generateToken',[AuthController::class,'refreshtoken']);
+});
+
+  Route::post('register',[AuthController::class,'register']);
+    Route::post('login',[AuthController::class,'login']);

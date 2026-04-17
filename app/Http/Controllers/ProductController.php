@@ -20,21 +20,25 @@ class ProductController extends Controller
      */
     public function index(): View
     {
-        $products = Product::Where('status', 'active')->latest()->paginate(5);
-        foreach ($products as $product) {
+        $products = Product::where('status', 'active')->latest()->paginate(5);
 
+        foreach ($products as $product) {
             $sizeIds = $product->size ?? [];
             $product->size_names = Size::whereIn('id', $sizeIds)->pluck('name')->toArray();
 
-            // colors
+            //  $product->productSizes = Size::whereIn('id', $sizeIds)->get();
+
             $colorIds = $product->color ?? [];
             $product->color_names = Color::whereIn('id', $colorIds)->pluck('name')->toArray();
 
-            // categories
+            //        $product->productColors = Color::whereIn('id', $colorIds)->get();
+
+            // Category names
             $categoryIds = $product->category ?? [];
             $product->category_names = Category::whereIn('id', $categoryIds)->pluck('name')->toArray();
         }
 
+        // dd($products);
         return view('products.index', compact('products'))
             ->with('i', (request()->input('page', 1) - 1) * 5);
     }
@@ -61,9 +65,9 @@ class ProductController extends Controller
 
         // ✅ FIX: Just assign the raw arrays!
         // Laravel will automatically JSON encode them behind the scenes.
-        $data['size'] = $request->sizes;
-        $data['category'] = $request->categories;
-        $data['color'] = $request->colors;
+        $data['size'] = array_map('intval', $request->sizes ?? []);
+        $data['category'] = array_map('intval', $request->categories ?? []);
+        $data['color'] = array_map('intval', $request->colors ?? []);
 
         // HANDLE MULTIPLE IMAGES
         if ($request->hasFile('images')) {
@@ -124,75 +128,69 @@ class ProductController extends Controller
      * Update the specified resource in storage.
      */
     public function update(ProductUpdateRequest $request, Product $product): RedirectResponse
-    {
-        // echo "hello";
-        $data = $request->validated();
-        $data['size'] = json_encode($request->sizes);
-        $data['category'] = json_encode($request->categories);
-        $data['color'] = json_encode($request->colors);
-        // //got the image field from DB and checked tat it array or not
-        $imageNames = $product->image;
-        if (! is_array($imageNames)) {
-            $imageNames = [];
-        }
+{
+    $data = $request->validated();
 
-        if ($request->filled('removed_images')) {
-            $removeIndexes = $request->removed_images;
+    // Store raw arrays, Laravel will JSON encode automatically
+    $data['size'] = array_map('intval', $request->sizes ?? []);
+    $data['category'] = array_map('intval', $request->categories ?? []);
+    $data['color'] = array_map('intval', $request->colors ?? []);
 
-            foreach ($removeIndexes as $index) {
-                if (isset($imageNames[$index])) {
-                    Storage::disk('public')->delete('products/'.$imageNames[$index]);
-                    unset($imageNames[$index]);
-                }
-            }
+    // Existing images from DB
+    $imageNames = $product->image;
 
-            // reindex after removals
-            $imageNames = array_values($imageNames);
-        }
-        if ($request->hasFile('replace_images')) {
-            foreach ($request->file('replace_images') as $index => $file) { // exa replace_images[2]
-
-                if (isset($imageNames[$index])) {// /it will find the index in the DB image field
-                    // delete old file
-                    Storage::disk('public')->delete('products/'.$imageNames[$index]); // /find here and delete it
-                }
-
-                $newName = time().'_'.uniqid().'.'.$file->getClientOriginalExtension();
-                $file->storeAs('products', $newName, 'public');
-
-                // replace at same index
-                $imageNames[$index] = $newName;
-            }
-        }
-        if ($request->hasFile('new_images')) {
-            // this is for cleaning the all images and update it
-            // if ($product->image) {
-            //     $oldImages = json_decode($product->image, true);
-            //     if (is_array($oldImages)) {
-            //         foreach ($oldImages as $oldimages) {
-            //             Storage::disk('public')->delete('products/'.$oldimages);
-            //         }
-            //     }
-            // }
-            // $imageNames=[];
-
-            foreach ($request->file('new_images') as $image) {
-
-                $imageName = time().'_'.uniqid().'.'.$image->getClientOriginalExtension();
-                $image->storeAs('products', $imageName, 'public');
-
-                $imageNames[] = $imageName;
-            }
-
-        }
-        $data['image'] = json_encode(array_values($imageNames));
-        // IF A NEW IMAGE IS UPLOADED
-
-        $product->update($data);
-
-        return redirect()->route('products.index')
-            ->with('success', 'Product updated successfully');
+    if (!is_array($imageNames)) {
+        $imageNames = [];
     }
+
+    // Remove selected images
+    if ($request->filled('removed_images')) {
+        $removeIndexes = $request->removed_images;
+
+        foreach ($removeIndexes as $index) {
+            if (isset($imageNames[$index])) {
+                Storage::disk('public')->delete('products/' . $imageNames[$index]);
+                unset($imageNames[$index]);
+            }
+        }
+
+        $imageNames = array_values($imageNames);
+    }
+
+    // Replace images at same index
+    if ($request->hasFile('replace_images')) {
+        foreach ($request->file('replace_images') as $index => $file) {
+
+            if (isset($imageNames[$index])) {
+                Storage::disk('public')->delete('products/' . $imageNames[$index]);
+            }
+
+            $newName = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
+            $file->storeAs('products', $newName, 'public');
+
+            $imageNames[$index] = $newName;
+        }
+    }
+
+    // Add new images
+    if ($request->hasFile('new_images')) {
+        foreach ($request->file('new_images') as $image) {
+
+            $imageName = time() . '_' . uniqid() . '.' . $image->getClientOriginalExtension();
+            $image->storeAs('products', $imageName, 'public');
+
+            $imageNames[] = $imageName;
+        }
+    }
+
+    // Save as raw array
+    $data['image'] = array_values($imageNames);
+
+    $product->update($data);
+
+    return redirect()->route('products.index')
+        ->with('success', 'Product updated successfully');
+}
 
     /**
      * Remove the specified resource from storage.

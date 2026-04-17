@@ -17,6 +17,18 @@ use Illuminate\Support\Facades\Route;
 Route::get('/contact', [ContactController::class, 'contactForm'])->name('contact.contactForm');
 Route::post('/contact', [ContactController::class, 'submit'])->name('contact.submit');
 
+Route::middleware(['auth'])->group(function () {
+    Route::get('/customer/profile', function () {
+        return view('customer.profile');
+    })->name('customer.profile');
+    // Route::get('/customer/profile', function () {
+    //     return view('customer.profile');
+    // })->name('customer.profile');
+    // Route::get('/customer/profile', function () {
+    //     return view('customer.profile');
+    // })->name('customer.profile');
+});
+
 Route::middleware(['auth', 'customer', '2fa'])->group(function () {
     Route::get('/dashboard', function () {
         return view('customer.dashboard');
@@ -94,8 +106,9 @@ Route::get('/2fa/setup', [TwoFactorController::class, 'setup'])->name('2fa.setup
 Route::post('/2fa/setup', [TwoFactorController::class, 'verifySetup'])->name('2fa.setup.verify');
 
 Route::get('/2fa/verify', [TwoFactorController::class, 'verifyPage'])->name('2fa.verify');
-Route::post('/2fa/verify', [TwoFactorController::class, 'verify'])->name('2fa.verify.post');
-
+Route::post('/2fa/verify', [TwoFactorController::class, 'verify'])
+    ->middleware('auth')
+    ->name('2fa.verify.post');
 Route::post('/save-fcm-token', function (Request $request) {
     // Save the token to the currently logged-in admin
 

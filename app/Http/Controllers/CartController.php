@@ -62,21 +62,15 @@ class CartController extends Controller
     public function product_listing(): View
     {
         $products = Product::Where('status', 'active')->latest()->paginate(5);
-        foreach ($products as $product) {
+       foreach ($products as $product) {
+    $sizeIds = $product->size ?? [];
+    $product->productSizes = Size::whereIn('id', $sizeIds)->get();
 
-            $sizeIds = $product->size ?? [];
-            $productSizes = Size::whereIn('id', $sizeIds)->get();
+    $colorIds = $product->color ?? [];
+    $product->productColors = Color::whereIn('id', $colorIds)->get();
+}
 
-            // colors
-            $colorIds = $product->color ?? [];
-            $productColors = Color::whereIn('id', $colorIds)->get();
-            // // categories
-            // $categoryIds = json_decode($product->category, true) ?? [];
-            // $product->category_names = Category::whereIn('id', $categoryIds)->pluck('name')->toArray();
-
-        }
-
-        return view('products.list', compact('products', 'productColors', 'productSizes'))
+        return view('products.list', compact('products'))
             ->with('i', (request()->input('page', 1) - 1) * 5);
     }
 

@@ -52,6 +52,11 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->group(function () {
     Route::resource('taxes', TaxController::class);
     Route::resource('discounts', DiscountController::class);
 
+
+
+    ///import , export product module 
+    
+
     Route::get('/search-products', [ProductController::class, 'search'])->name('products.search');
     Route::get('/search-sizes', [SizeController::class, 'search'])->name('sizes.search');
     Route::get('/search-colors', [ColorController::class, 'search'])->name('colors.search');

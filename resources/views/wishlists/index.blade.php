@@ -16,7 +16,7 @@
 
             @php
                 $product = $item->product;
-                $images = json_decode($product->image, true) ?? [];
+                $images = $product->image ?? [];
                 $firstImg = $images[0] ?? null;
             @endphp
 

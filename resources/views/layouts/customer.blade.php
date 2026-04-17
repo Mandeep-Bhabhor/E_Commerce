@@ -149,8 +149,21 @@
                 <ul class="navbar-nav align-items-center">
                     @auth
                         <li class="nav-item">
-                            <a class="nav-link" href="{{ route('profile.edit') }}">
-                                <i class="fa fa-user-circle me-1"></i> {{ auth()->user()->name }}
+                            <a class="nav-link d-flex align-items-center gap-2" href="{{ route('customer.profile') }}">
+
+                                @if (auth()->user()->pfp)
+                                    <img src="{{ asset('storage/' . auth()->user()->pfp) }}" alt="Profile"
+                                        class="rounded-circle border" style="width: 32px; height: 32px; object-fit: cover;">
+                                @else
+                                    <div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center"
+                                        style="width: 32px; height: 32px; font-size: 14px;">
+                                        {{ strtoupper(substr(auth()->user()->name, 0, 1)) }}
+                                    </div>
+                                @endif
+
+                                <span>
+                                     {{ auth()->user()->name }}
+                                </span>
                             </a>
                         </li>
                         <li class="nav-item">
