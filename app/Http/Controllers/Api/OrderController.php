@@ -10,6 +10,7 @@ use App\Models\Product;
 use App\Models\Tax;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Kreait\Firebase\Factory;
@@ -21,9 +22,38 @@ class OrderController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        //
+        $user = Auth::user();
+
+        if (!$user) {
+            return response()->json([
+                'message' => 'Unauthenticated'
+            ], 401);
+        }
+
+        $search = $request->input('search');
+        $perPage = $request->input('per_page', 10);
+
+        $query = Order::with(['items.product', 'address'])
+            ->where('user_id', $user->id);
+
+        // 🔍 Search logic
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('order_no', 'LIKE', "%{$search}%")
+                    ->orWhere('payment_method', 'LIKE', "%{$search}%")
+                    ->orWhere('order_status', 'LIKE', "%{$search}%")
+                    ->orWhere('payment_status', 'LIKE', "%{$search}%")
+                    ->orWhereHas('items.product', function ($q2) use ($search) {
+                        $q2->where('name', 'LIKE', "%{$search}%");
+                    });
+            });
+        }
+
+        $orders = $query->latest()->paginate($perPage);
+
+        return response()->json($orders, 200);
     }
 
     /**
@@ -87,8 +117,8 @@ class OrderController extends Controller
         $discountAmount = 0;
         if ($request->discount_id) {
             $discount = Discount::where('id', $request->discount_id)
-                ->where(fn ($q) => $q->whereNull('start_date')->orWhere('start_date', '<=', now()))
-                ->where(fn ($q) => $q->whereNull('end_date')->orWhere('end_date', '>=', now()))
+                ->where(fn($q) => $q->whereNull('start_date')->orWhere('start_date', '<=', now()))
+                ->where(fn($q) => $q->whereNull('end_date')->orWhere('end_date', '>=', now()))
                 ->first();
 
             if ($discount) {
@@ -100,8 +130,8 @@ class OrderController extends Controller
 
         // 5. Tax Logic
         $tax = Tax::where('is_active', true)
-            ->where(fn ($q) => $q->whereNull('start_date')->orWhere('start_date', '<=', now()))
-            ->where(fn ($q) => $q->whereNull('end_date')->orWhere('end_date', '>=', now()))
+            ->where(fn($q) => $q->whereNull('start_date')->orWhere('start_date', '<=', now()))
+            ->where(fn($q) => $q->whereNull('end_date')->orWhere('end_date', '>=', now()))
             ->first();
 
         $taxRate = $tax->rate ?? 0;
@@ -143,7 +173,6 @@ class OrderController extends Controller
                 'order_no' => $order->order_no,
                 'data' => $order->load('items'),
             ], 201);
-
         } catch (\Exception $e) {
             DB::rollback();
 
@@ -184,7 +213,7 @@ class OrderController extends Controller
     }
 
 
-        private function notifyAdmin($order)
+    private function notifyAdmin($order)
     {
         // 1. Find the Admin (User ID 1)
         $admin = User::find(3);
@@ -207,10 +236,9 @@ class OrderController extends Controller
 
                 // Fire it off!
                 $messaging->send($message);
-
             } catch (\Exception $e) {
                 // Log errors silently so the customer's checkout doesn't crash
-                Log::error('Firebase Notification Failed: '.$e->getMessage());
+                Log::error('Firebase Notification Failed: ' . $e->getMessage());
             }
         }
     }

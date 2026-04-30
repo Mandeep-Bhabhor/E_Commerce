@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Address;
+use App\Models\Order;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Auth\Events\Registered;
@@ -18,8 +20,8 @@ class AuthController extends Controller
     {
         $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
-            'phone_number' => ['nullable', 'string', 'max:15', 'unique:'.User::class],
+            'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:' . User::class],
+            'phone_number' => ['nullable', 'string', 'max:15', 'unique:' . User::class],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ]);
 
@@ -34,7 +36,8 @@ class AuthController extends Controller
 
         return response()->json(
             [
-                $user, 'Successfully registereed the user',
+                $user,
+                'Successfully registereed the user',
             ]
         );
     }
@@ -60,7 +63,7 @@ class AuthController extends Controller
         $token = $user->createToken(
             'tokkken',
             ['*'],
-            Carbon::now()->addMinutes(10)
+            Carbon::now()->addDays(1)
         )->plainTextToken;
 
         return response()->json([
@@ -68,7 +71,6 @@ class AuthController extends Controller
             $user,
             'message' => 'successfully logged in',
         ], 200);
-
     }
 
     public function logout(Request $request)
@@ -98,13 +100,49 @@ class AuthController extends Controller
         $newToken = $user->createToken(
             'token',
             ['*'],
-            Carbon::now()->addMinutes(10)
+            Carbon::now()->addDays(1)
         )->plainTextToken;
 
         return response()->json([
             'message' => 'New token generated successfully',
             'token' => $newToken,
-            'expires_in' => '30 min',
+            'expires_in' => '1 day',
         ]);
+    }
+    public function userProfile(Request $request)
+    {
+        $user = $request->user();
+
+        $validated = $request->validate([
+            'filter' => 'nullable|in:pending,placed,delivered,cancelled'
+        ]);
+
+        $filter = $validated['filter'] ?? null;
+
+        $addresses = Address::where('user_id', $user->id)->get();
+
+        $orders = Order::where('user_id', $user->id)
+            ->when($filter, function ($query) use ($filter) {
+                $query->where('order_status', $filter);
+            })
+            ->get();
+
+        return response()->json([
+            'status' => 'success',
+            'data' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'phone_number' => $user->phone_number,
+                'role' => $user->role,
+                'avatar' => $user->avatar,
+                'pfp' => $user->pfp,
+                'social_provider' => $user->social_provider,
+                'social_id' => $user->social_id,
+                'created_at' => $user->created_at,
+                'addresses' => $addresses,
+                'orders' => $orders
+            ]
+        ], 200);
     }
 }

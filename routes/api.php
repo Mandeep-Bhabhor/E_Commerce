@@ -8,85 +8,104 @@ use App\Http\Controllers\Api\ColorController;
 use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\SizeController;
+use App\Http\Controllers\Api\WishlistController;
 use App\Http\Controllers\Auth\SocialAuthController;
 use App\Http\Controllers\TwoFactorController;
-use App\Models\Cart;
 use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/user', function (Request $request) {
-    $user = User::all();
-    return $user;
+    return User::all();
 })->middleware('auth:sanctum');
 
-// products
-Route::get('/products/all', [ProductController::class, 'index'])->middleware('auth:sanctum');
-Route::get('/products/{id}', [ProductController::class, 'show'])->middleware('auth:sanctum');
-Route::post('/products/create', [ProductController::class, 'store']);
-Route::patch('/products/update/{product}', [ProductController::class, 'update']);
-Route::patch('/products/delete/{product}', [ProductController::class, 'destroy']);
-Route::get('/products/search', [ProductController::class, 'search']);
+// ─────────────────────────────────────────────
+// PRODUCTS — specific named routes FIRST,
+// then the {id} wildcard LAST
+// ─────────────────────────────────────────────
+Route::prefix('products')->group(function () {
 
-// /colors
+    // Static/named routes — must come before any {wildcard}
+    Route::post('/create', [ProductController::class, 'store']);
+    Route::get('/search', [ProductController::class, 'search']);
+    Route::get('/api/export', [ProductController::class, 'apiExport']);
+
+    // Protected routes (Sanctum)
+    Route::middleware('auth:sanctum')->group(function () {
+            Route::post('/', [ProductController::class, 'index']);
+
+        Route::post('/api/apiimport', [ProductController::class, 'apiImport']);
+        Route::get('/{id}', [ProductController::class, 'show']);      // wildcard LAST
+        Route::patch('/update/{product}', [ProductController::class, 'update']);
+        Route::patch('/delete/{product}', [ProductController::class, 'destroy']);
+    });
+});
+
+// Colors
 Route::get('/colors', [ColorController::class, 'index']);
 Route::get('/color/{id}', [ColorController::class, 'show']);
 Route::post('/colors/create', [ColorController::class, 'store']);
 Route::patch('/colors/update/{color}', [ColorController::class, 'update']);
 Route::patch('/colors/delete/{color}', [ColorController::class, 'destroy']);
 
-// sizes
+// Sizes
 Route::get('/sizes', [SizeController::class, 'index']);
 Route::get('/size/{id}', [SizeController::class, 'show']);
 Route::post('/sizes/create', [SizeController::class, 'store']);
 Route::patch('/sizes/update/{size}', [SizeController::class, 'update']);
 Route::patch('/sizes/delete/{size}', [SizeController::class, 'destroy']);
 
-// /categories
+// Categories
 Route::get('/categories', [CategoryController::class, 'index']);
 Route::get('/category/{id}', [CategoryController::class, 'show']);
 Route::post('/categories/create', [CategoryController::class, 'store']);
 Route::patch('/categories/update/{category}', [CategoryController::class, 'update']);
 Route::patch('/categories/delete/{category}', [CategoryController::class, 'destroy']);
 
-// Create address for a user
+// Addresses
 Route::get('customers/{user_id}/address', [AddressController::class, 'index']);
 Route::post('customers/{user_id}/address', [AddressController::class, 'store']);
 Route::patch('address/{user_id}', [AddressController::class, 'update']);
 Route::delete('address/{user_id}', [AddressController::class, 'destroy']);
 
-// Order Store API
-Route::post('orders/store', [OrderController::class, 'store_order']);
 
-// Cart Store API
+Route::middleware('auth:sanctum')->group(function () {
+// Carts
 Route::post('carts/store', [CartController::class, 'store']);
 Route::post('cart/update/{id}', [CartController::class, 'update']);
 Route::delete('cart/delete/{id}', [CartController::class, 'destroy']);
 Route::post('carts/show/{id}', [CartController::class, 'show']);
-Route::get('carts/{user_id}', [CartController::class, 'index']);
+Route::post('carts', [CartController::class, 'index']);
+Route::post('/carts/truncate', [CartController::class, 'cart_truncate']);
 
-route::post('/carts/truncate',[CartController::class,'cart_truncate']);
 
 
-////2Fa
 
-// ── Social Auth ──────────────────────────────────────────
-// Step 1: Get Auth0 login URL
+
+    //Wishlists
+    Route::post('wishlist/store', [WishlistController::class, 'store']);
+    Route::post('wishlist/remove', [WishlistController::class, 'remove']);
+    Route::post('wishlist/', [WishlistController::class, 'index']);
+
+    // Orders
+    Route::post('orders/store', [OrderController::class, 'store_order']);
+    Route::post('orders/search', [OrderController::class, 'index']);
+});
+// Auth
+Route::post('register', [AuthController::class, 'register']);
+Route::post('login', [AuthController::class, 'login']);
+
+// Social Auth
 Route::get('/auth/google/redirect', [SocialAuthController::class, 'apiRedirectToGoogle']);
 Route::post('/auth/social-login', [SocialAuthController::class, 'apiTokenLogin']);
-
-// Step 2: Exchange Auth0 code for Laravel session + return status
 Route::get('/auth/callback', [SocialAuthController::class, 'apiHandleCallback']);
 
-// ── 2FA ─────────────────────────────────────────────────
+// 2FA + protected auth routes
 Route::middleware('auth:sanctum')->group(function () {
-    Route::get('/2fa/setup',          [TwoFactorController::class, 'apiSetup']);
-    Route::post('/2fa/setup/verify',  [TwoFactorController::class, 'apiVerifySetup']);
-    Route::post('/2fa/verify',        [TwoFactorController::class, 'apiVerify']);
-      Route::post('logout',[AuthController::class,'logout']);
-      Route::post('/generateToken',[AuthController::class,'refreshtoken']);
+    Route::get('/2fa/setup', [TwoFactorController::class, 'apiSetup']);
+    Route::post('/2fa/setup/verify', [TwoFactorController::class, 'apiVerifySetup']);
+    Route::post('/2fa/verify', [TwoFactorController::class, 'apiVerify']);
+    Route::post('logout', [AuthController::class, 'logout']);
+    Route::post('/generateToken', [AuthController::class, 'refreshtoken']);
+    Route::post('/user-profile', [AuthController::class, 'userProfile']);
 });
-
-  Route::post('register',[AuthController::class,'register']);
-    Route::post('login',[AuthController::class,'login']);
