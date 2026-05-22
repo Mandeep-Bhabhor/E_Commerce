@@ -22,3 +22,12 @@
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# Firebase credentials (service account private key)
+/app/firebase/firebase_credentials.json
+
+# Firebase JS config (contains API key, project ID)
+/public/js/firebase.js
+
+# Firebase messaging service worker (contains API key)
+/public/firebase-messaging-sw.js

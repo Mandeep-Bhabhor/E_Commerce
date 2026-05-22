@@ -1,0 +1,55 @@
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+
+import {
+    getFirestore,
+    collection,
+    addDoc,
+    query,
+    orderBy,
+    onSnapshot,
+    setDoc,
+    doc,
+    getDoc,
+    where,
+    getDocs,
+    updateDoc,
+} from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+import {
+    getStorage,
+    ref,
+    uploadBytes,
+    getDownloadURL,
+} from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
+
+const firebaseConfig = {
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+    projectId: "YOUR_PROJECT_ID",
+    storageBucket: "YOUR_PROJECT_ID.firebasestorage.app",
+    messagingSenderId: "YOUR_SENDER_ID",
+    appId: "YOUR_APP_ID",
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const storage = getStorage(app);
+
+export {
+    db,
+    storage,
+    collection,
+    addDoc,
+    query,
+    orderBy,
+    onSnapshot,
+    setDoc,
+    doc,
+    getDoc,
+    where,
+    getDocs,
+    updateDoc,
+    ref,
+    uploadBytes,
+    getDownloadURL,
+};
