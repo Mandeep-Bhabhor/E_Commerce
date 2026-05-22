@@ -34,7 +34,7 @@ class RegisteredUserController extends Controller
         $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
-            'phone_number' => ['nullable', 'string', 'max:15', 'unique:'.User::class], 
+            'phone_number' => ['nullable', 'string', 'max:10','min:10','unique:'.User::class], 
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ]);
 
@@ -53,10 +53,10 @@ class RegisteredUserController extends Controller
         
         // IF NO PHONE NUMBER: Log them in normally and skip OTP!
         if (empty($request->phone_number)) {
-            Auth::login($user);
+          //  Auth::login($user);
             
             // Change 'dashboard' to 'home' if your main page is named differently
-            return redirect()->route('customer.dashboard'); 
+            return redirect()->route('login'); 
         }
 
 

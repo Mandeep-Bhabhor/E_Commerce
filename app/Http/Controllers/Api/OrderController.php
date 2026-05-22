@@ -13,6 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use App\Services\WhatsAppService;
 use Kreait\Firebase\Factory;
 use Kreait\Firebase\Messaging\CloudMessage;
 use Kreait\Firebase\Messaging\Notification;
@@ -67,8 +68,10 @@ class OrderController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store_order(Request $request)
-    {
+    public function store_order(
+        Request $request,
+        WhatsAppService $whatsapp
+    ) {
         // 1. Validation
         $request->validate([
             'user_id' => 'required|exists:users,id',
@@ -165,7 +168,94 @@ class OrderController extends Controller
 
             DB::commit();
             $this->notifyAdmin($order);
+            /*
+|--------------------------------------------------------------------------
+| Load Relationships
+|--------------------------------------------------------------------------
+*/
 
+            $order->load('items.product');
+
+            /*
+|--------------------------------------------------------------------------
+| Product List
+|--------------------------------------------------------------------------
+*/
+
+            $productList = "";
+
+            foreach ($order->items as $item) {
+
+                $productName =
+                    $item->product->name ?? 'Product';
+
+                $productList .=
+                    "• {$productName}\n";
+
+                $productList .=
+                    "Qty: {$item->qty}\n";
+
+                $productList .=
+                    "Price: ₹{$item->price}\n\n";
+            }
+
+            /*
+|--------------------------------------------------------------------------
+| WhatsApp Message
+|--------------------------------------------------------------------------
+*/
+
+            $user = User::find($userId);
+
+            $message = "
+Hello {$user->name},
+This is From API 
+
+Your order has been placed successfully.
+
+Order No: #{$order->order_no}
+
+Order Status: {$order->order_status}
+
+Items:
+{$productList}
+
+Subtotal: ₹{$order->subtotal}
+
+Tax: ₹{$order->tax_amount}
+
+Discount: ₹{$order->discount_amount}
+
+Grand Total: ₹{$order->grand_total}
+
+Payment Method: {$order->payment_method}
+
+Thank you for shopping with us.
+";
+
+            /*
+|--------------------------------------------------------------------------
+| Static Test Image
+|--------------------------------------------------------------------------
+*/
+
+            $imageUrl = 'https://images.unsplash.com/photo-1506744038136-46273834b3fb';
+
+
+            /*
+|--------------------------------------------------------------------------
+| Send WhatsApp
+|--------------------------------------------------------------------------
+*/
+
+            if (!empty($user->phone_number)) {
+
+                $whatsapp->sendMessage(
+                    $user->phone_number,
+                    $message,
+                    $imageUrl
+                );
+            }
             return response()->json([
                 'status' => 'success',
                 'message' => 'Order placed successfully (COD)',

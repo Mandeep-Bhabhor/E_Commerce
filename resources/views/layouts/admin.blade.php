@@ -12,12 +12,12 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
     <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
-    
+
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
     <style>
-       body {
+        body {
             font-family: 'Figtree', sans-serif;
             background-color: #f8f9fa;
         }
@@ -40,7 +40,8 @@
             color: #fff !important;
             border: 1px solid #0a58ca !important;
             border-radius: 4px !important;
-            padding: 2px 8px 2px 24px !important; /* Space on left for the X */
+            padding: 2px 8px 2px 24px !important;
+            /* Space on left for the X */
             position: relative;
             margin-top: 4px !important;
             margin-left: 4px !important;
@@ -112,9 +113,19 @@
                     <li class="nav-item"><a
                             class="nav-link {{ request()->routeIs('discounts*') ? 'active text-primary' : '' }}"
                             href="{{ route('discounts.index') }}">Discount</a></li>
-                    <li class="nav-item"><a
-                            class="nav-link {{ request()->routeIs('settings*') ? 'active text-primary' : '' }}"
-                            href="{{ route('settings.view') }}">Settings</a></li>
+                    <li class="nav-item">
+                        <a class="nav-link {{ request()->routeIs('admin.approve.customers') ? 'active text-primary' : '' }}"
+                            href="{{ route('admin.approve.customers') }}">
+                            Approve Customers
+                        </a>
+                    </li>
+
+                    <li class="nav-item">
+                        <a class="nav-link {{ request()->routeIs('inquiry.index') ? 'active text-primary' : '' }}"
+                            href="{{ route('inquiry.index') }}">
+                            Inquiries
+                        </a>
+                    </li>
                 </ul>
 
                 <div class="d-flex align-items-center gap-3">

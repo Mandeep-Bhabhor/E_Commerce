@@ -31,7 +31,8 @@ class User extends Authenticatable
         'otp',
         'otp_expires_at',
         'fcm_token',
-        'pfp'
+        'pfp',
+        'status'
     ];
 
     /**
@@ -56,4 +57,9 @@ class User extends Authenticatable
             'password' => 'hashed',
         ];
     }
+
+    public function inquiries()
+{
+    return $this->hasMany(Inquiry::class);
+}
 }

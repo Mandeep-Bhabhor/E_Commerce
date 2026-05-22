@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Events\MainOrderStatus;
+use App\Services\WhatsAppService;
 use App\Events\OrderPlaced;
 use App\Events\OrderStatusUpdated as EventsOrderStatusUpdated;
 use App\Events\ReturnStatusUpdated;
@@ -12,6 +13,7 @@ use App\Models\Cart;
 use App\Models\Discount;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\Product;
 use App\Models\Tax;
 use App\Models\User;
 use Carbon\Carbon;
@@ -28,14 +30,15 @@ use function Symfony\Component\Clock\now;
 class OrderController extends Controller
 {
     //
-    public function store_order(Request $request)
+    public function store_order(Request $request, WhatsAppService $whatsapp)
     {
-        // dd($request);
         $userId = Auth::id();
+        $user = Auth::user();
+
         $paymentMethod = $request->payment_method;
         $addressId = session('checkout_address_id');
 
-        if (! $addressId) {
+        if (!$addressId) {
             return back()->with('error', 'Please select address first');
         }
 
@@ -43,7 +46,7 @@ class OrderController extends Controller
             ->where('user_id', $userId)
             ->first();
 
-        if (! $address) {
+        if (!$address) {
             return back()->with('error', 'Invalid address selected');
         }
 
@@ -53,18 +56,27 @@ class OrderController extends Controller
             return back()->with('error', 'Cart is empty');
         }
 
-        // 🔹 1. Subtotal
+        /*
+    |--------------------------------------------------------------------------
+    | Calculate Subtotal
+    |--------------------------------------------------------------------------
+    */
+
         $subtotal = $cartItems->sum(function ($item) {
             return $item->qty * $item->price;
         });
 
-        // 🔹 2. Discount
-        $discountAmount = 0;
-        $discountId = $request->discount_id;
-        // dd($discountId);
-        if ($discountId) {
+        /*
+    |--------------------------------------------------------------------------
+    | Discount
+    |--------------------------------------------------------------------------
+    */
 
-            $discount = Discount::where('id', $discountId)
+        $discountAmount = 0;
+
+        if ($request->discount_id) {
+
+            $discount = Discount::where('id', $request->discount_id)
                 ->where(function ($q) {
                     $q->whereNull('start_date')
                         ->orWhere('start_date', '<=', now());
@@ -74,21 +86,28 @@ class OrderController extends Controller
                         ->orWhere('end_date', '>=', now());
                 })
                 ->first();
-            //   dd($discount);
+
             if ($discount) {
 
                 if ($discount->type === 'percentage') {
-                    $discountAmount = ($subtotal * $discount->value) / 100;
-                    // dd($discountAmount);
+
+                    $discountAmount =
+                        ($subtotal * $discount->value) / 100;
                 }
 
                 if ($discount->type === 'amount') {
+
                     $discountAmount = $discount->value;
                 }
             }
         }
 
-        // 🔹 3. Tax (active only)
+        /*
+    |--------------------------------------------------------------------------
+    | Tax
+    |--------------------------------------------------------------------------
+    */
+
         $tax = Tax::where('is_active', true)
             ->where(function ($q) {
                 $q->whereNull('start_date')
@@ -101,19 +120,37 @@ class OrderController extends Controller
             ->first();
 
         $taxRate = $tax->rate ?? 0;
-        $taxAmount = ($subtotal - $discountAmount) * $taxRate / 100;
 
-        // 🔹 4. Shipping (optional future)
+        $taxAmount =
+            ($subtotal - $discountAmount) * $taxRate / 100;
+
+        /*
+    |--------------------------------------------------------------------------
+    | Final Total
+    |--------------------------------------------------------------------------
+    */
+
         $shippingAmount = 0;
 
-        // 🔹 5. Final Total
-        $grandTotal = round($subtotal - $discountAmount + $taxAmount + $shippingAmount);
-        //  dd($grandTotal,$taxAmount,$subtotal,$discountAmount);
+        $grandTotal = round(
+            $subtotal -
+                $discountAmount +
+                $taxAmount +
+                $shippingAmount
+        );
+
         DB::beginTransaction();
 
         try {
 
+            /*
+        |--------------------------------------------------------------------------
+        | Create Order
+        |--------------------------------------------------------------------------
+        */
+
             $order = Order::create([
+
                 'user_id' => $userId,
                 'address_id' => $addressId,
 
@@ -123,8 +160,6 @@ class OrderController extends Controller
                 'tax_rate' => $taxRate,
                 'tax_amount' => $taxAmount,
 
-                // 'shipping_amount' => $shippingAmount,
-
                 'grand_total' => $grandTotal,
 
                 'payment_status' => 'pending',
@@ -132,45 +167,200 @@ class OrderController extends Controller
                 'order_status' => 'placed',
             ]);
 
-            $order->order_no = str_pad($order->id, 4, '0', STR_PAD_LEFT);
+            $order->order_no =
+                str_pad($order->id, 4, '0', STR_PAD_LEFT);
+
             $order->save();
 
-            $this->store_order_items($order->id, $cartItems);
+            /*
+        |--------------------------------------------------------------------------
+        | Store Order Items
+        |--------------------------------------------------------------------------
+        */
+
+            $this->store_order_items(
+                $order->id,
+                $cartItems
+            );
+
+            /*
+        |--------------------------------------------------------------------------
+        | Clear Cart
+        |--------------------------------------------------------------------------
+        */
 
             Cart::where('user_id', $userId)->delete();
 
             DB::commit();
 
-            event(new OrderPlaced($order));
-            // 3. Trigger the background notification!
-            $this->notifyAdmin($order);
-            if ($paymentMethod === 'cod') {
-                $order->update(['payment_status' => 'paid']);
+            /*
+        |--------------------------------------------------------------------------
+        | Load Relationships
+        |--------------------------------------------------------------------------
+        */
 
-                return redirect()->route('orders.show', $order->id);
+            $order->load('items.product');
+
+            /*
+        |--------------------------------------------------------------------------
+        | Events & Notifications
+        |--------------------------------------------------------------------------
+        */
+
+            event(new OrderPlaced($order));
+
+            $this->notifyAdmin($order);
+
+            /*
+        |--------------------------------------------------------------------------
+        | Product List
+        |--------------------------------------------------------------------------
+        */
+
+            $productList = "";
+
+            foreach ($order->items as $item) {
+
+                $productName =
+                    $item->product->name ?? 'Product';
+
+                $productList .=
+                    "• {$productName}\n";
+
+                $productList .=
+                    "Qty: {$item->qty}\n";
+
+                $productList .=
+                    "Price: ₹{$item->price}\n\n";
+            }
+
+            /*
+        |--------------------------------------------------------------------------
+        | WhatsApp Message
+        |--------------------------------------------------------------------------
+        */
+
+            $message = "
+Hello {$user->name},
+
+Your order has been placed successfully.
+
+Order No: #{$order->order_no}
+
+Order Status: {$order->order_status}
+
+Items:
+{$productList}
+
+Subtotal: ₹{$order->subtotal}
+
+Tax: ₹{$order->tax_amount}
+
+Discount: ₹{$order->discount_amount}
+
+Grand Total: ₹{$order->grand_total}
+
+Payment Method: {$order->payment_method}
+
+Thank you for shopping with us.
+";
+
+            /*
+        |--------------------------------------------------------------------------
+        | Product Image
+        |--------------------------------------------------------------------------
+        */
+            $imageUrl = null;
+
+            if ($order->items->isNotEmpty()) {
+
+                $firstItem = $order->items->first();
+
+                if (
+                    $firstItem->product &&
+                    !empty($firstItem->product->image)
+                ) {
+
+                    $images = $firstItem->product->image;
+
+                    // Take first image from array
+                    $image = $images[0] ?? null;
+
+                    if ($image) {
+
+                        // $imageUrl = url(
+                        //     'public/storage/products/' . $image
+                        // );
+
+                        $imageUrl = 'https://images.unsplash.com/photo-1506744038136-46273834b3fb';
+
+                        //dd($imageUrl);
+                    }
+                }
+            }
+            /*
+        |--------------------------------------------------------------------------
+        | Send WhatsApp
+        |--------------------------------------------------------------------------
+        */
+
+            if (!empty($user->phone_number)) {
+
+                $whatsapp->sendMessage(
+                    $user->phone_number,
+                    $message,
+                    $imageUrl
+                );
+            }
+
+            /*
+        |--------------------------------------------------------------------------
+        | Redirect By Payment Method
+        |--------------------------------------------------------------------------
+        */
+
+            if ($paymentMethod === 'cod') {
+
+                $order->update([
+                    'payment_status' => 'paid'
+                ]);
+
+                return redirect()->route(
+                    'orders.show',
+                    $order->id
+                );
             }
 
             if ($paymentMethod === 'online') {
-                return redirect()->route('razorpay.payment.form', [
-                    'order_id' => $order->id,
-                ]);
+
+                return redirect()->route(
+                    'razorpay.payment.form',
+                    [
+                        'order_id' => $order->id,
+                    ]
+                );
             }
 
             if ($paymentMethod === 'paypal') {
-                return redirect()->route('paypal.process', [
-                    'order' => $order->id,
-                ]);
-            }
 
+                return redirect()->route(
+                    'paypal.process',
+                    [
+                        'order' => $order->id,
+                    ]
+                );
+            }
         } catch (\Exception $e) {
 
             DB::rollback();
-            dd('STOP! Here is the actual error: '.$e->getMessage());
 
-            return back()->with('error', 'Order failed. Try again');
+            dd($e->getMessage());
         }
 
-        return back()->with('error', 'Invalid payment method');
+        return back()->with(
+            'error',
+            'Invalid payment method'
+        );
     }
 
     public function store_order_items($orderId, $cartItems): void
@@ -259,7 +449,7 @@ class OrderController extends Controller
                 // order number
                 $q->where('order_no', 'LIKE', "%{$query}%")
 
-                  // status
+                    // status
                     ->orWhere('order_status', 'LIKE', "%{$query}%");
 
                 // date search
@@ -283,7 +473,7 @@ class OrderController extends Controller
         return response()->json($orders);
     }
 
-    public function updateItemStatus(Request $request, $itemId)
+    public function updateItemStatus(Request $request, $itemId, WhatsAppService $whatsapp)
     {
         $request->validate([
             'status' => 'required|in:placed,delivered,cancelled',
@@ -318,11 +508,44 @@ class OrderController extends Controller
             $order->update(['order_status' => 'delivered']);
         }
         event(new EventsOrderStatusUpdated($item, $oldStatus));
+        /////
+
+        $user = $order->user;
+
+        $productName = $item->product?->name;
+      
+
+        $message = "
+Hello {$user->name},
+
+Your order Item Status has been changed.
+
+Order No: #{$order->order_no}
+
+Item Name : {$productName}
+
+Old Item Status: {$oldStatus}
+
+Updated Status: {$item->status}
+
+";
+
+
+
+        if (!empty($user->phone_number)) {
+
+            $whatsapp->sendMessage(
+                $user->phone_number,
+                $message,
+            );
+        }
+
+
 
         return response()->json(['success' => true]);
     }
 
-    public function updateOrderStatus(Request $request, $id)
+    public function updateOrderStatus(Request $request, $id,WhatsAppService $whatsapp)
     {
         $request->validate([
             'status' => 'required|in:placed,delivered,cancelled',
@@ -348,6 +571,35 @@ class OrderController extends Controller
         // sync items
         $order->items()->update(['status' => $newStatus, 'delivered_at' => now()]);
         event(new MainOrderStatus($order, $oldStatus, $newStatus));
+   $user = $order->user;
+
+        $productName = $item->product?->name;
+      
+
+        $message = "
+Hello {$user->name},
+
+Your order Item Status has been changed.
+
+Order No: #{$order->order_no}
+
+Item Name : {$productName}
+
+Old Item Status: {$oldStatus}
+
+Updated Status: {$item->status}
+
+";
+
+
+
+        if (!empty($user->phone_number)) {
+
+            $whatsapp->sendMessage(
+                $user->phone_number,
+                $message,
+            );
+        }
 
         return response()->json(['success' => true]);
     }
@@ -415,7 +667,6 @@ class OrderController extends Controller
         event(new ReturnStatusUpdated($item));
 
         return back()->with('success', 'Return request rejected');
-
     }
 
     /**
@@ -444,10 +695,9 @@ class OrderController extends Controller
 
                 // Fire it off!
                 $messaging->send($message);
-
             } catch (\Exception $e) {
                 // Log errors silently so the customer's checkout doesn't crash
-                Log::error('Firebase Notification Failed: '.$e->getMessage());
+                Log::error('Firebase Notification Failed: ' . $e->getMessage());
             }
         }
     }

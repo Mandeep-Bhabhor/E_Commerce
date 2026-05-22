@@ -117,9 +117,9 @@
                                 </form>
                                 <h6 class="mb-0">${{ $product->price }}</h6>
                                 {{-- VIEW PRODUCT BUTTON --}}
-                                <a href="{{ route('products.show', $product->id) }}"
-                                    class="btn btn-outline-dark btn-sm w-100 mt-2">
-                                    Buy Product
+                                <a href="{{ route('inquiry.create', $product->id) }}"
+                                    class="btn btn-outline-primary btn-sm w-100 mt-2">
+                                    Product Inquiry
                                 </a>
 
                             </div>

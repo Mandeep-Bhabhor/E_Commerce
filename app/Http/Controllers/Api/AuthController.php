@@ -44,13 +44,22 @@ class AuthController extends Controller
 
     public function login(Request $request)
     {
-
+       
         $credentials = $request->validate(
             [
                 'email' => 'required|email',
                 'password' => 'required',
             ]
         );
+
+         $user = User::where('email', $request['email'])->first();
+
+        if ($user && $user->status !== 'active') {
+            return response()->json([
+                'message' => 'Your account is not approved yet',
+            ]);
+            // 'email' => 'Your account is not approved yet.',
+        }
 
         if (! Auth::attempt($credentials)) {
             return response([
@@ -144,5 +153,27 @@ class AuthController extends Controller
                 'orders' => $orders
             ]
         ], 200);
+    }
+
+
+    public function saveFcmToken(Request $request)
+    {
+        $request->validate([
+            'token' => 'required|string'
+        ]);
+
+        \Log::info('API FCM TOKEN SAVE');
+        \Log::info($request->all());
+
+        $user = $request->user();
+
+        $user->update([
+            'fcm_token' => $request->token
+        ]);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'FCM token saved successfully'
+        ]);
     }
 }

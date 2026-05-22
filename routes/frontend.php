@@ -3,6 +3,7 @@
 use App\Http\Controllers\AddressController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\ContactController;
+use App\Http\Controllers\InquiryController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\PaypalController;
 use App\Http\Controllers\ProductController;
@@ -16,6 +17,7 @@ use Illuminate\Support\Facades\Route;
 // Put these outside your auth middleware so guest users can access them!
 Route::get('/contact', [ContactController::class, 'contactForm'])->name('contact.contactForm');
 Route::post('/contact', [ContactController::class, 'submit'])->name('contact.submit');
+
 
 Route::middleware(['auth'])->group(function () {
     Route::get('/customer/profile', function () {
@@ -36,6 +38,9 @@ Route::middleware(['auth', 'customer', '2fa'])->group(function () {
 });
 // Customer routes — auth + customer role
 Route::middleware(['auth', 'customer'])->group(function () {
+    Route::get('/', function () {
+        return view('welcome');
+    });
 
     Route::post('cart-list', [CartController::class, 'store'])->name('cart.add');
     Route::get('/cart', [CartController::class, 'index'])
@@ -88,9 +93,7 @@ Route::middleware(['auth', 'customer'])->group(function () {
         ->name('order.item.return');
     // /firbase notification
 
-    Route::get('/', function () {
-        return view('welcome');
-    });
+
     Route::get('products', [CartController::class, 'product_listing'])->name('products.list');
     // --- LEGAL PAGES (Dynamic Customer View) ---
     // Note: Put this near the bottom of your routes file so it doesn't accidentally catch other URLs!
@@ -99,7 +102,6 @@ Route::middleware(['auth', 'customer'])->group(function () {
 
         return view('page', compact('page'));
     })->name('customer.page');
-
 });
 
 Route::get('/2fa/setup', [TwoFactorController::class, 'setup'])->name('2fa.setup');
@@ -117,3 +119,8 @@ Route::post('/save-fcm-token', function (Request $request) {
     // dd($request->token);
     return response()->json(['message' => 'Token saved successfully!']);
 })->middleware('auth');
+
+Route::get('/inquiry/{product}/create', [InquiryController::class, 'create'])
+    ->name('inquiry.create');
+Route::post('/inquiry/store', [InquiryController::class, 'store'])
+    ->name('inquiry.store');

@@ -34,6 +34,8 @@ Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.
 
 use App\Http\Controllers\Auth\PhoneLoginController;
 use App\Http\Controllers\ContactController;
+use App\Http\Controllers\CustomController;
+use App\Http\Controllers\InquiryController;
 use App\Http\Controllers\SetingsController;
 use App\Http\Controllers\UserController;
 
@@ -105,6 +107,41 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->group(function () {
 
     // 4. Delete a page
     Route::delete('/legal-pages/{legalPage}', [LegalPageController::class, 'destroy'])->name('admin.legal-pages.destroy');
+
+
+    //Inquiry 
+    Route::get('/product-inquiries', [InquiryController::class, 'index'])->name('inquiry.index');
+
+    Route::get('/admin/inquiries/{id}', [InquiryController::class, 'show'])
+        ->name('admin.inquiries.show');
+    //  Route::get('/product-inquiries',[InquiryController::class,'index'])->name('inquiry.index');
+
+    Route::post('/admin/product-inquiries/{id}/reply', [InquiryController::class, 'reply'])
+        ->name('admin.inquiries.reply');
+
+    Route::get('approve_customers', [CustomController::class, 'approve_customers_page'])->name('admin.approve.customers');
+
+    Route::put('/approve-customer/{id}', [CustomController::class, 'approveCustomer'])
+        ->name('admin.customer.approve');
+
+    Route::get('/chat', function () {
+        return view('admin.chat.index');
+    });
+
+    /*
+    |--------------------------------------------------------------------------
+    | CUSTOMER PROFILE — for admin chat panel
+    |--------------------------------------------------------------------------
+    | Session-authenticated (Blade admin), returns profile picture URL + basic
+    | info from MySQL. The "about" field is fetched client-side from Firestore.
+    */
+    Route::get(
+        '/customer/{userId}/profile',
+        [\App\Http\Controllers\Api\AdminProfileController::class, 'profile']
+    )->name('admin.customer.profile');
 });
 
-require __DIR__.'/auth.php';
+
+
+
+require __DIR__ . '/auth.php';

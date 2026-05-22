@@ -23,8 +23,14 @@ class PhoneLoginController extends Controller
             'phone_number' => ['required', 'string'],
         ]);
 
-        $user = User::where('phone_number', $request->phone_number)->first();
+        $phone = preg_replace('/\D/', '', $request->phone_number);
 
+        // Remove country code if present
+        if (str_starts_with($phone, '91')) {
+            $phone = substr($phone, 2);
+        }
+
+        $user = User::where('phone_number', $phone)->first();        //dd($user);
         if (!$user) {
             return back()->withErrors(['phone_number' => 'This phone number is not registered. Please sign up first.']);
         }
@@ -34,12 +40,12 @@ class PhoneLoginController extends Controller
         $user->otp = $otp;
         $user->otp_expires_at = now()->addMinutes(5);
         $user->save();
-
+        $twilioPhone = '+91' . $phone;
         // Send Twilio SMS
         try {
             $twilio = new Client(env('TWILIO_SID'), env('TWILIO_AUTH_TOKEN'));
             $twilio->messages->create(
-                $request->phone_number,
+                $twilioPhone,
                 [
                     "from" => env('TWILIO_PHONE_NUMBER'),
                     "body" => "Welcome back! Your login code is: {$otp}. It will expire in 5 minutes."

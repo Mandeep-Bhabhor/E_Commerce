@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\SizeController;
 use App\Http\Controllers\Api\WishlistController;
 use App\Http\Controllers\Auth\SocialAuthController;
+use App\Http\Controllers\InquiryController;
 use App\Http\Controllers\TwoFactorController;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -32,7 +33,7 @@ Route::prefix('products')->group(function () {
 
     // Protected routes (Sanctum)
     Route::middleware('auth:sanctum')->group(function () {
-            Route::post('/', [ProductController::class, 'index']);
+        Route::post('/', [ProductController::class, 'index']);
 
         Route::post('/api/apiimport', [ProductController::class, 'apiImport']);
         Route::get('/{id}', [ProductController::class, 'show']);      // wildcard LAST
@@ -70,13 +71,13 @@ Route::delete('address/{user_id}', [AddressController::class, 'destroy']);
 
 
 Route::middleware('auth:sanctum')->group(function () {
-// Carts
-Route::post('carts/store', [CartController::class, 'store']);
-Route::post('cart/update/{id}', [CartController::class, 'update']);
-Route::delete('cart/delete/{id}', [CartController::class, 'destroy']);
-Route::post('carts/show/{id}', [CartController::class, 'show']);
-Route::post('carts', [CartController::class, 'index']);
-Route::post('/carts/truncate', [CartController::class, 'cart_truncate']);
+    // Carts
+    Route::post('carts/store', [CartController::class, 'store']);
+    Route::post('cart/update/{id}', [CartController::class, 'update']);
+    Route::delete('cart/delete/{id}', [CartController::class, 'destroy']);
+    Route::post('carts/show/{id}', [CartController::class, 'show']);
+    Route::post('carts', [CartController::class, 'index']);
+    Route::post('/carts/truncate', [CartController::class, 'cart_truncate']);
 
 
 
@@ -108,4 +109,45 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('logout', [AuthController::class, 'logout']);
     Route::post('/generateToken', [AuthController::class, 'refreshtoken']);
     Route::post('/user-profile', [AuthController::class, 'userProfile']);
+});
+Route::middleware('auth:sanctum')->post('/save-fcm-token', [AuthController::class, 'saveFcmToken']);
+Route::middleware('auth:sanctum')->post('product-inquiry', [InquiryController::class, 'store_api']);
+Route::middleware('auth:sanctum')->get('product-inquiries', [InquiryController::class, 'list_api_user']);
+
+
+use App\Http\Controllers\Api\ChatController;
+
+Route::middleware('auth:sanctum')->group(function () {
+
+    Route::post('/chat/send', [ChatController::class, 'send']);
+
+    Route::get('/chat/messages/{chatId}', [ChatController::class, 'messages']);
+});
+
+use App\Http\Controllers\Api\AdminChatController;
+
+Route::middleware('auth:sanctum')->group(function () {
+
+    Route::post(
+        '/admin/chat/send',
+        [AdminChatController::class, 'send']
+    );
+});
+
+use App\Http\Controllers\Api\AboutController;
+
+Route::middleware('auth:sanctum')->group(function () {
+
+    Route::get('/about', [AboutController::class, 'show']);
+
+    Route::post('/about', [AboutController::class, 'update']);
+});
+
+use App\Http\Controllers\Api\ReadReceiptController;
+
+Route::middleware('auth:sanctum')->group(function () {
+
+    Route::post('/chat/mark-read', [ReadReceiptController::class, 'markRead']);
+
+    Route::get('/chat/unread-count', [ReadReceiptController::class, 'unreadCount']);
 });
