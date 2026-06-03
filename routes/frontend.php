@@ -23,12 +23,10 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/customer/profile', function () {
         return view('customer.profile');
     })->name('customer.profile');
-    // Route::get('/customer/profile', function () {
-    //     return view('customer.profile');
-    // })->name('customer.profile');
-    // Route::get('/customer/profile', function () {
-    //     return view('customer.profile');
-    // })->name('customer.profile');
+
+    Route::get('/customer/starred-messages', function () {
+        return view('customer.starred');
+    })->name('customer.starred');
 });
 
 Route::middleware(['auth', 'customer', '2fa'])->group(function () {

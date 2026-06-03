@@ -123,6 +123,7 @@
             overflow: hidden;
             display: none;
             z-index: 9999;
+            flex-direction: column;
         }
 
         /* HEADER */
@@ -168,7 +169,7 @@
         /* MESSAGES */
 
         #chat-messages {
-            height: 300px;
+            flex: 1;
             overflow-y: auto;
             padding: 15px;
             background: #f8f9fa;
@@ -177,6 +178,106 @@
         /* Sender bubble — light green like WhatsApp */
         .bg-light-green {
             background-color: #dcf8c6 !important;
+        }
+
+        /* Star on messages in customer chat */
+        .cust-msg-star {
+            cursor: pointer;
+            font-size: 11px;
+            color: #ccc;
+            opacity: 0;
+            transition: opacity 0.2s, color 0.2s;
+            margin-left: 4px;
+        }
+        .cust-msg-star.active {
+            color: #ffc107;
+            opacity: 1;
+        }
+        .cust-bubble-wrap:hover .cust-msg-star {
+            opacity: 1;
+        }
+
+        /* Reply icon */
+        .cust-msg-reply {
+            cursor: pointer;
+            font-size: 11px;
+            color: #999;
+            opacity: 0;
+            transition: opacity 0.2s;
+            margin-left: 4px;
+        }
+        .cust-bubble-wrap:hover .cust-msg-reply {
+            opacity: 1;
+        }
+        .cust-msg-reply:hover {
+            color: #0d6efd;
+        }
+
+        /* Reply preview bar */
+        .cust-reply-preview {
+            background: #e3f2fd;
+            border-left: 3px solid #0d6efd;
+            padding: 5px 10px;
+            font-size: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-radius: 4px;
+            margin-bottom: 6px;
+        }
+        .cust-reply-preview .reply-cancel {
+            cursor: pointer;
+            font-size: 16px;
+            color: #999;
+        }
+
+        /* Reply quote inside bubble */
+        .cust-reply-quote {
+            background: rgba(0,0,0,0.06);
+            border-left: 3px solid #0d6efd;
+            padding: 3px 6px;
+            margin-bottom: 4px;
+            border-radius: 3px;
+            font-size: 11px;
+            color: #555;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50%       { opacity: 0; }
+        }
+
+        /* Starred messages panel */
+        #starred-panel {
+            position: fixed;
+            bottom: 100px;
+            right: 25px;
+            width: 350px;
+            height: 500px;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            display: none;
+            z-index: 10000;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+        }
+        #starred-panel .starred-header {
+            background: #ffc107;
+            color: #333;
+            padding: 12px 15px;
+            font-weight: 700;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        #starred-panel .starred-body {
+            height: calc(100% - 48px);
+            overflow-y: auto;
+            padding: 12px;
+            background: #f8f9fa;
         }
     </style>
 </head>
@@ -385,8 +486,11 @@
 
         <div id="chat-header">
 
-            {{-- Row 1: title --}}
-            <div class="chat-title">Help Support</div>
+            {{-- Row 1: title + starred button --}}
+            <div class="chat-title d-flex justify-content-between align-items-center">
+                <span>Help Support</span>
+                <span id="open-starred" style="cursor:pointer;font-size:14px;opacity:0.85;" title="View starred messages">★</span>
+            </div>
 
             {{-- Row 2: profile picture + about --}}
             @auth
@@ -436,29 +540,49 @@
 
         <div class="p-2 border-top">
 
-            <!-- FILE INPUT -->
-
-            <div class="mb-2">
-
-                <input type="file" id="media-input" class="form-control">
-
+            <!-- REPLY BAR -->
+            <div id="cust-reply-bar" class="cust-reply-preview d-none">
+                <span id="cust-reply-text" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">↩ ...</span>
+                <span class="reply-cancel" id="cust-reply-cancel">&times;</span>
             </div>
 
             <!-- PREVIEW -->
-
             <div id="media-preview" class="mb-2">
             </div>
 
-            <!-- MESSAGE -->
+            <!-- RECORDING INDICATOR -->
+            <div id="cust-rec-indicator" class="d-none mb-2 d-flex align-items-center gap-2" style="font-size:12px;color:#dc3545;">
+                <span style="width:8px;height:8px;border-radius:50%;background:#dc3545;display:inline-block;animation:blink 1s infinite;"></span>
+                Recording... <span id="cust-rec-timer">0s</span>
+            </div>
 
-            <div class="d-flex">
+            <!-- INPUT ROW: clip + mic + location + text + send -->
+            <div class="d-flex align-items-center gap-2">
 
-                <input type="text" id="chat-input" class="form-control me-2" placeholder="Type message...">
+                <label for="media-input" style="cursor:pointer;flex-shrink:0;margin:0;" title="Attach file">
+                    <i class="fa fa-paperclip" style="font-size:18px;color:#0d6efd;"></i>
+                </label>
 
-                <button id="send-message" class="btn btn-primary">
+                <input type="file" id="media-input" class="d-none">
 
-                    <i class="fa fa-paper-plane"></i>
+                <button id="cust-mic" type="button"
+                    class="btn rounded-circle d-flex align-items-center justify-content-center"
+                    style="width:34px;height:34px;flex-shrink:0;background:#f0f4ff;border:1px solid #c5d0f0;"
+                    title="Hold to record audio">
+                    <i class="fa fa-microphone" style="font-size:13px;color:#0d6efd;"></i>
+                </button>
 
+                <button id="cust-location" type="button"
+                    class="btn rounded-circle d-flex align-items-center justify-content-center"
+                    style="width:34px;height:34px;flex-shrink:0;background:#f0f4ff;border:1px solid #c5d0f0;"
+                    title="Send location">
+                    <i class="fa fa-location-dot" style="font-size:13px;color:#0d6efd;"></i>
+                </button>
+
+                <input type="text" id="chat-input" class="form-control" placeholder="Type message..." style="border-radius:20px;font-size:14px;">
+
+                <button id="send-message" class="btn btn-primary rounded-circle d-flex align-items-center justify-content-center" style="width:36px;height:36px;flex-shrink:0;">
+                    <i class="fa fa-paper-plane" style="font-size:13px;"></i>
                 </button>
 
             </div>
@@ -484,6 +608,7 @@
             where,
             getDocs,
             updateDoc,
+            deleteDoc,
             ref,
             uploadBytes,
             getDownloadURL
@@ -520,13 +645,13 @@
 
         chatToggle.addEventListener('click', () => {
 
-            if (chatBox.style.display === 'block') {
+            if (chatBox.style.display === 'flex') {
 
                 chatBox.style.display = 'none';
 
             } else {
 
-                chatBox.style.display = 'block';
+                chatBox.style.display = 'flex';
 
             }
 
@@ -547,134 +672,42 @@
 
 
 
-        /* FILE PREVIEW */
+        /* FILE PREVIEW — show directly inline */
 
         mediaInput.addEventListener('change', () => {
 
             const file = mediaInput.files[0];
-
+            mediaPreview.innerHTML = '';
             if (!file) return;
 
-            mediaPreview.innerHTML = '';
-
-
-
-            /* IMAGE */
-
             if (file.type.startsWith('image/')) {
-
                 mediaPreview.innerHTML = `
-
-                <button class="btn btn-sm btn-outline-primary"
-                        id="open-preview">
-
-                    <i class="fa fa-image"></i>
-                    Preview Image
-
-                </button>
-
-            `;
-
-            }
-
-            /* VIDEO */
-            else if (file.type.startsWith('video/')) {
-
-                mediaPreview.innerHTML = `
-
-                <button class="btn btn-sm btn-outline-primary"
-                        id="open-preview">
-
-                    <i class="fa fa-video"></i>
-                    Preview Video
-
-                </button>
-
-            `;
-
-            }
-
-            /* OTHER FILE */
-            else {
-
-                mediaPreview.innerHTML = `
-
-                <div class="alert alert-secondary p-2 mb-0">
-
-                    ${file.name}
-
-                </div>
-
-            `;
-
-            }
-
-
-
-            /* OPEN PREVIEW */
-
-            const previewBtn =
-                document.getElementById('open-preview');
-
-            if (previewBtn) {
-
-                previewBtn.addEventListener('click', () => {
-
-                    const modalBody =
-                        document.getElementById('previewModalBody');
-
-                    modalBody.innerHTML = '';
-
-
-
-                    /* IMAGE */
-
-                    if (file.type.startsWith('image/')) {
-
-                        modalBody.innerHTML = `
-
+                    <div style="position:relative;display:inline-block;margin-bottom:4px;">
                         <img src="${URL.createObjectURL(file)}"
-                             class="img-fluid rounded"
-                             style="
-                                max-height:500px;
-                                object-fit:contain;
-                             ">
+                             style="max-height:80px;max-width:150px;border-radius:8px;object-fit:cover;border:1px solid #ddd;">
+                        <span class="preview-remove" style="position:absolute;top:-6px;right:-6px;background:#dc3545;color:#fff;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;cursor:pointer;">&times;</span>
+                    </div>`;
+            } else if (file.type.startsWith('video/')) {
+                mediaPreview.innerHTML = `
+                    <div style="position:relative;display:inline-block;margin-bottom:4px;">
+                        <video src="${URL.createObjectURL(file)}" controls style="max-height:80px;max-width:150px;border-radius:8px;border:1px solid #ddd;"></video>
+                        <span class="preview-remove" style="position:absolute;top:-6px;right:-6px;background:#dc3545;color:#fff;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;cursor:pointer;">&times;</span>
+                    </div>`;
+            } else {
+                mediaPreview.innerHTML = `
+                    <div style="display:inline-flex;align-items:center;gap:6px;background:#f0f0f0;padding:4px 10px;border-radius:8px;font-size:12px;margin-bottom:4px;">
+                        <i class="fa fa-file" style="color:#666;"></i>
+                        <span style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${file.name}</span>
+                        <span class="preview-remove" style="cursor:pointer;color:#dc3545;font-size:14px;font-weight:bold;">&times;</span>
+                    </div>`;
+            }
 
-                    `;
-
-                    }
-
-                    /* VIDEO */
-                    else if (file.type.startsWith('video/')) {
-
-                        modalBody.innerHTML = `
-
-                        <video controls
-                               class="w-100 rounded"
-                               style="
-                                    max-height:500px;
-                               ">
-
-                            <source src="${URL.createObjectURL(file)}">
-
-                        </video>
-
-                    `;
-
-                    }
-
-
-
-                    const modal = new bootstrap.Modal(
-
-                        document.getElementById('previewModal')
-
-                    );
-
-                    modal.show();
-
+            const removeBtn = mediaPreview.querySelector('.preview-remove');
+            if (removeBtn) {
+                removeBtn.addEventListener('click', () => {
+                    mediaInput.value = '';
+                    mediaPreview.innerHTML = '';
                 });
-
             }
 
         });
@@ -801,6 +834,8 @@
                     media_type: mediaType,
                     delivered: true,
                     read: false,
+                    reply_to_id: custReplyingTo ? custReplyingTo.id : null,
+                    reply_to_text: custReplyingTo ? custReplyingTo.text : null,
                     created_at: new Date()
                 }
 
@@ -816,8 +851,187 @@
 
             mediaPreview.innerHTML = '';
 
+            // Reset reply state
+            custReplyingTo = null;
+            if (custReplyBar) custReplyBar.classList.add('d-none');
+
         });
 
+
+        /*
+        |----------------------------------------------------------------------
+        | AUDIO RECORDING — Customer
+        |----------------------------------------------------------------------
+        */
+
+        const custMicBtn       = document.getElementById('cust-mic');
+        const custRecIndicator = document.getElementById('cust-rec-indicator');
+        const custRecTimer     = document.getElementById('cust-rec-timer');
+
+        let custMediaRecorder = null;
+        let custAudioChunks   = [];
+        let custRecInterval   = null;
+        let custRecSeconds    = 0;
+        let custIsRecording   = false; // guard against multiple starts
+
+        async function sendCustAudioMessage(audioBlob) {
+            try {
+                const fileName = 'customer_' + userId + '_audio_' + Date.now() + '.webm';
+                const storageRef = ref(storage, 'chat_media/' + fileName);
+                await uploadBytes(storageRef, audioBlob);
+                const audioUrl = await getDownloadURL(storageRef);
+
+                await setDoc(
+                    doc(db, "support_chats", chatId),
+                    { customer_id: userId, customer_name: userName, updated_at: new Date() },
+                    { merge: true }
+                );
+
+                await addDoc(
+                    collection(db, "support_chats", chatId, "messages"),
+                    {
+                        sender: "customer",
+                        sender_id: userId,
+                        sender_name: userName,
+                        message: '',
+                        media_url: audioUrl,
+                        media_type: 'audio/webm',
+                        delivered: true,
+                        read: false,
+                        reply_to_id: custReplyingTo ? custReplyingTo.id : null,
+                        reply_to_text: custReplyingTo ? custReplyingTo.text : null,
+                        created_at: new Date()
+                    }
+                );
+
+                custReplyingTo = null;
+                if (custReplyBar) custReplyBar.classList.add('d-none');
+            } catch (e) {
+                console.error('Audio send failed:', e);
+                alert('Failed to send audio');
+            }
+        }
+
+        if (custMicBtn) {
+            const startCustRecording = async () => {
+                if (custIsRecording) return; // prevent double-start
+                try {
+                    clearInterval(custRecInterval);
+                    custIsRecording = true;
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    custAudioChunks = [];
+                    custMediaRecorder = new MediaRecorder(stream);
+                    custMediaRecorder.ondataavailable = e => custAudioChunks.push(e.data);
+                    custMediaRecorder.onstop = async () => {
+                        stream.getTracks().forEach(t => t.stop());
+                        custIsRecording = false;
+                        if (custRecSeconds < 1) return;
+                        const blob = new Blob(custAudioChunks, { type: 'audio/webm' });
+                        await sendCustAudioMessage(blob);
+                    };
+                    custMediaRecorder.start();
+                    custRecSeconds = 0;
+                    custRecTimer.textContent = '0s';
+                    custRecIndicator.classList.remove('d-none');
+                    custMicBtn.style.background = '#fde8e8';
+                    custMicBtn.querySelector('i').style.color = '#dc3545';
+                    custRecInterval = setInterval(() => {
+                        custRecSeconds++;
+                        custRecTimer.textContent = custRecSeconds + 's';
+                    }, 1000);
+                } catch (e) {
+                    custIsRecording = false;
+                    alert('Microphone access denied');
+                }
+            };
+
+            const stopCustRecording = () => {
+                if (!custIsRecording) return; // nothing to stop
+                if (custMediaRecorder && custMediaRecorder.state === 'recording') {
+                    custMediaRecorder.stop();
+                }
+                clearInterval(custRecInterval);
+                custRecInterval = null;
+                custRecIndicator.classList.add('d-none');
+                custMicBtn.style.background = '#f0f4ff';
+                custMicBtn.querySelector('i').style.color = '#0d6efd';
+                // custIsRecording reset in onstop
+            };
+
+            custMicBtn.addEventListener('mousedown', startCustRecording);
+            custMicBtn.addEventListener('mouseup', stopCustRecording);
+            custMicBtn.addEventListener('mouseleave', stopCustRecording);
+            custMicBtn.addEventListener('touchstart', e => { e.preventDefault(); startCustRecording(); });
+            custMicBtn.addEventListener('touchend', stopCustRecording);
+        }
+
+
+        /*
+        |----------------------------------------------------------------------
+        | LOCATION — Customer
+        |----------------------------------------------------------------------
+        */
+
+        const custLocationBtn = document.getElementById('cust-location');
+
+        if (custLocationBtn) {
+            custLocationBtn.addEventListener('click', () => {
+                if (!navigator.geolocation) {
+                    alert('Geolocation not supported by your browser');
+                    return;
+                }
+
+                custLocationBtn.disabled = true;
+                custLocationBtn.querySelector('i').style.color = '#ffc107';
+
+                navigator.geolocation.getCurrentPosition(
+                    async (position) => {
+                        const lat = position.coords.latitude.toFixed(6);
+                        const lng = position.coords.longitude.toFixed(6);
+
+                        try {
+                            await setDoc(
+                                doc(db, "support_chats", chatId),
+                                { customer_id: userId, customer_name: userName, updated_at: new Date() },
+                                { merge: true }
+                            );
+
+                            await addDoc(
+                                collection(db, "support_chats", chatId, "messages"),
+                                {
+                                    sender: "customer",
+                                    sender_id: userId,
+                                    sender_name: userName,
+                                    message: JSON.stringify({ lat, lng, label: userName + "'s Location" }),
+                                    media_url: null,
+                                    media_type: 'location',
+                                    delivered: true,
+                                    read: false,
+                                    reply_to_id: custReplyingTo ? custReplyingTo.id : null,
+                                    reply_to_text: custReplyingTo ? custReplyingTo.text : null,
+                                    created_at: new Date()
+                                }
+                            );
+
+                            custReplyingTo = null;
+                            if (custReplyBar) custReplyBar.classList.add('d-none');
+                        } catch (e) {
+                            console.error('Location send failed:', e);
+                            alert('Failed to send location');
+                        }
+
+                        custLocationBtn.disabled = false;
+                        custLocationBtn.querySelector('i').style.color = '#0d6efd';
+                    },
+                    (err) => {
+                        custLocationBtn.disabled = false;
+                        custLocationBtn.querySelector('i').style.color = '#0d6efd';
+                        alert('Could not get location: ' + err.message);
+                    },
+                    { enableHighAccuracy: true, timeout: 10000 }
+                );
+            });
+        }
 
 
         /* MARK ADMIN MESSAGES AS READ */
@@ -854,6 +1068,119 @@
 
 
 
+        /*
+        |----------------------------------------------------------------------
+        | REPLY STATE (Customer)
+        |----------------------------------------------------------------------
+        */
+
+        let custReplyingTo = null; // { id, text, sender }
+
+        const custReplyBar    = document.getElementById('cust-reply-bar');
+        const custReplyText   = document.getElementById('cust-reply-text');
+        const custReplyCancel = document.getElementById('cust-reply-cancel');
+
+        if (custReplyCancel) {
+            custReplyCancel.addEventListener('click', () => {
+                custReplyingTo = null;
+                custReplyBar.classList.add('d-none');
+            });
+        }
+
+        function setCustReply(msgId, msgText, sender) {
+            const preview = (msgText || 'Media').substring(0, 60);
+            custReplyingTo = { id: msgId, text: preview, sender: sender };
+            custReplyText.textContent = `↩ ${sender}: ${preview}`;
+            custReplyBar.classList.remove('d-none');
+            chatInput.focus();
+        }
+
+
+        /*
+        |----------------------------------------------------------------------
+        | CUSTOMER FAVOURITES
+        |----------------------------------------------------------------------
+        */
+
+        let customerFavMessages = new Set();
+        let lastCustSnapshot = null;
+
+        async function loadCustomerFavourites() {
+            try {
+                const snap = await getDocs(
+                    collection(db, 'customer_favourites', userId, 'messages')
+                );
+                snap.forEach(d => customerFavMessages.add(d.id));
+            } catch (e) { /* collection may not exist yet */ }
+        }
+
+        async function toggleCustFavMessage(msgId, sender, message, mediaUrl) {
+            const docRef = doc(db, 'customer_favourites', userId, 'messages', msgId);
+            if (customerFavMessages.has(msgId)) {
+                customerFavMessages.delete(msgId);
+                await deleteDoc(docRef);
+            } else {
+                customerFavMessages.add(msgId);
+                await setDoc(docRef, {
+                    chat_id: chatId,
+                    message_id: msgId,
+                    sender: sender,
+                    message: message || '',
+                    media_url: mediaUrl || null,
+                    starred_at: new Date()
+                });
+            }
+        }
+
+        await loadCustomerFavourites();
+
+        /* STARRED PANEL TOGGLE */
+        const starredPanel = document.getElementById('starred-panel');
+        const starredBody  = document.getElementById('starred-body');
+        const openStarred  = document.getElementById('open-starred');
+        const closeStarred = document.getElementById('close-starred');
+
+        if (openStarred) {
+            openStarred.addEventListener('click', async () => {
+                starredPanel.style.display = 'block';
+                chatBox.style.display = 'none';
+                await renderStarredMessages();
+            });
+        }
+        if (closeStarred) {
+            closeStarred.addEventListener('click', () => {
+                starredPanel.style.display = 'none';
+            });
+        }
+
+        async function renderStarredMessages() {
+            starredBody.innerHTML = '<p class="text-muted text-center mt-4">Loading...</p>';
+            try {
+                const snap = await getDocs(
+                    collection(db, 'customer_favourites', userId, 'messages')
+                );
+                if (snap.empty) {
+                    starredBody.innerHTML = '<p class="text-muted text-center mt-4">No starred messages yet</p>';
+                    return;
+                }
+                starredBody.innerHTML = '';
+                snap.forEach(docSnap => {
+                    const d = docSnap.data();
+                    const senderLabel = d.sender === 'customer' ? 'You' : 'Support';
+                    starredBody.innerHTML += `
+                        <div class="p-2 mb-2 rounded bg-white shadow-sm" style="font-size:13px;">
+                            <div class="fw-semibold text-muted" style="font-size:11px;">${senderLabel}</div>
+                            <div>${d.message || '<i>Media</i>'}</div>
+                        </div>
+                    `;
+                });
+            } catch (e) {
+                starredBody.innerHTML = '<p class="text-danger text-center mt-4">Failed to load</p>';
+            }
+        }
+
+
+
         /* REALTIME CHAT */
 
         const q = query(
@@ -872,15 +1199,22 @@
 
 
         onSnapshot(q, (snapshot) => {
-            markMessagesAsRead(); // ← add this line here
+            markMessagesAsRead();
+            lastCustSnapshot = snapshot;
+            renderCustMessages(snapshot);
+        });
+
+        function renderCustMessages(snapshot) {
 
             messagesDiv.innerHTML = '';
 
-
+            const messagesMap = new Map();
 
             snapshot.forEach((docSnap) => {
 
                 const data = docSnap.data();
+                const msgId = docSnap.id;
+                messagesMap.set(msgId, data);
 
 
 
@@ -967,6 +1301,58 @@
 
 
                 /* OTHER FILE */
+                else if (data.media_url && data.media_type && data.media_type.startsWith('audio/')) {
+
+                    mediaHtml = `
+                    <div style="
+                        display:flex;
+                        align-items:center;
+                        gap:8px;
+                        background:rgba(0,0,0,0.06);
+                        border-radius:20px;
+                        padding:6px 10px;
+                        min-width:160px;
+                        max-width:200px;
+                    ">
+                        <button onclick="
+                            var a=this.parentElement.querySelector('audio');
+                            if(a.paused){a.play();this.innerHTML='⏸';}
+                            else{a.pause();this.innerHTML='▶';}
+                        " style="
+                            width:30px;height:30px;border-radius:50%;
+                            background:#0d6efd;color:#fff;border:none;
+                            flex-shrink:0;font-size:12px;cursor:pointer;
+                            display:flex;align-items:center;justify-content:center;
+                        ">▶</button>
+                        <div style="flex:1;">
+                            <input type="range" value="0" min="0" step="0.01"
+                                style="width:100%;accent-color:#0d6efd;height:3px;cursor:pointer;"
+                                oninput="this.parentElement.parentElement.querySelector('audio').currentTime=this.value;">
+                            <div style="font-size:10px;color:#555;margin-top:2px;" class="audio-dur">0:00</div>
+                        </div>
+                        <audio src="${data.media_url}" style="display:none;"
+                            ontimeupdate="
+                                var r=this.parentElement.querySelector('input[type=range]');
+                                r.value=this.currentTime;
+                                var d=this.parentElement.querySelector('.audio-dur');
+                                var m=Math.floor(this.currentTime/60);
+                                var s=Math.floor(this.currentTime%60).toString().padStart(2,'0');
+                                d.textContent=m+':'+s;
+                            "
+                            onloadedmetadata="
+                                this.parentElement.querySelector('input[type=range]').max=this.duration;
+                            "
+                            onended="
+                                this.parentElement.querySelector('button').innerHTML='▶';
+                                this.parentElement.querySelector('input[type=range]').value=0;
+                                this.parentElement.querySelector('.audio-dur').textContent='0:00';
+                            ">
+                        </audio>
+                    </div>
+                    `;
+
+                }
+
                 else if (data.media_url) {
 
                     mediaHtml = `
@@ -983,11 +1369,50 @@
 
                 }
 
+                else if (data.media_type === 'location' && data.message) {
 
+                    try {
+                        const loc = JSON.parse(data.message);
+                        const mapUrl = `https://www.google.com/maps?q=${loc.lat},${loc.lng}`;
+                        mediaHtml = `
+                        <a href="${mapUrl}" target="_blank" style="display:block;text-decoration:none;">
+                            <div style="
+                                background:#e8f5e9;
+                                border:1px solid #c8e6c9;
+                                border-radius:10px;
+                                overflow:hidden;
+                                width:200px;
+                            ">
+                                <iframe
+                                    width="200" height="110"
+                                    style="border:0;display:block;"
+                                    loading="lazy"
+                                    allowfullscreen
+                                    src="https://maps.google.com/maps?q=${loc.lat},${loc.lng}&z=15&output=embed">
+                                </iframe>
+                                <div style="padding:5px 8px;font-size:11px;color:#2e7d32;display:flex;align-items:center;gap:4px;">
+                                    <i class="fa fa-location-dot" style="color:#d32f2f;"></i>
+                                    <span>${loc.label || 'Shared Location'}</span>
+                                </div>
+                            </div>
+                        </a>
+                        `;
+                    } catch(e) {
+                        mediaHtml = `<div class="text-muted small">📍 Location</div>`;
+                    }
+
+                }
+
+                const isFav = customerFavMessages.has(msgId);
+
+                // Reply quote
+                const replyQuoteHtml = data.reply_to_text
+                    ? `<div class="cust-reply-quote">${data.reply_to_text}</div>`
+                    : '';
 
                 messagesDiv.innerHTML += `
 
-                <div class="d-flex ${justifyClass} mb-3">
+                <div class="d-flex ${justifyClass} mb-3 cust-bubble-wrap">
 
                     <div class="p-2 rounded shadow-sm ${bubbleClass}"
 
@@ -995,6 +1420,8 @@
                             max-width:75%;
                             word-break:break-word;
                          ">
+
+                        ${replyQuoteHtml}
 
                         ${mediaHtml}
 
@@ -1012,6 +1439,14 @@
                             : ''
                         }
 
+                        <span class="cust-msg-reply" data-msg-id="${msgId}" title="Reply">↩</span>
+
+                        <span class="cust-msg-star ${isFav ? 'active' : ''}"
+                              data-msg-id="${msgId}"
+                              title="Star message">
+                            ${isFav ? '★' : '☆'}
+                        </span>
+
                     </div>
 
                 </div>
@@ -1020,14 +1455,33 @@
 
             });
 
+            /* REPLY CLICK HANDLERS */
+            document.querySelectorAll('.cust-msg-reply').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const msgId = e.currentTarget.dataset.msgId;
+                    const msgData = messagesMap.get(msgId);
+                    if (!msgData) return;
+                    setCustReply(msgId, msgData.message, msgData.sender);
+                });
+            });
 
+            /* STAR CLICK HANDLERS */
+            document.querySelectorAll('.cust-msg-star').forEach(star => {
+                star.addEventListener('click', async (e) => {
+                    const msgId = e.currentTarget.dataset.msgId;
+                    const msgData = messagesMap.get(msgId);
+                    if (!msgData) return;
+                    await toggleCustFavMessage(msgId, msgData.sender, msgData.message, msgData.media_url);
+                    if (lastCustSnapshot) renderCustMessages(lastCustSnapshot);
+                });
+            });
 
             /* AUTO SCROLL */
 
             messagesDiv.scrollTop =
                 messagesDiv.scrollHeight;
 
-        });
+        }
 
 
 
@@ -1162,6 +1616,18 @@
             });
         }
     </script>
+
+    <!-- STARRED MESSAGES PANEL (Customer) -->
+    <div id="starred-panel">
+        <div class="starred-header">
+            <span>★ Starred Messages</span>
+            <span id="close-starred" style="cursor:pointer;font-size:18px;">&times;</span>
+        </div>
+        <div class="starred-body" id="starred-body">
+            <p class="text-muted text-center mt-4">Loading...</p>
+        </div>
+    </div>
+
     <!-- MEDIA PREVIEW MODAL -->
 
     <div class="modal fade" id="previewModal" tabindex="-1">

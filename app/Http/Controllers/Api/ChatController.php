@@ -19,14 +19,39 @@ class ChatController extends Controller
 
             'message' => 'nullable|string',
 
-            'media'   => 'nullable|file|max:5120'
+            'media'   => 'nullable|file|max:5120',
+
+            'reply_to_id'   => 'nullable|string',
+            'reply_to_text' => 'nullable|string|max:200',
+
+            // Location fields
+            'lat'   => 'nullable|numeric|between:-90,90',
+            'lng'   => 'nullable|numeric|between:-180,180',
+            'label' => 'nullable|string|max:100',
 
         ]);
 
         $chatId = $request->chat_id;
 
-        $mediaUrl = null;
+        $mediaUrl  = null;
         $mediaType = null;
+
+        /*
+        |--------------------------------------------------------------------------
+        | LOCATION MESSAGE
+        |--------------------------------------------------------------------------
+        */
+
+        $messageText = $request->message;
+
+        if ($request->filled('lat') && $request->filled('lng')) {
+            $messageText = json_encode([
+                'lat'   => number_format((float) $request->lat, 6, '.', ''),
+                'lng'   => number_format((float) $request->lng, 6, '.', ''),
+                'label' => $request->label ?? (auth()->user()->name . "'s Location"),
+            ]);
+            $mediaType = 'location';
+        }
 
         /*
  
@@ -102,14 +127,16 @@ class ChatController extends Controller
         $firebase->addDocument(
             'support_chats/' . $chatId . '/messages',
             [
-                'sender'     => 'customer',
-                'user_id'    => auth()->id(),
-                'message'    => $request->message,
-                'media_url'  => $mediaUrl,
-                'media_type' => $mediaType,
-                'delivered'  => true,
-                'read'       => false,
-                'created_at' => new \DateTime('now', new \DateTimeZone('UTC')),
+                'sender'        => 'customer',
+                'user_id'       => auth()->id(),
+                'message'       => $messageText ?? $request->message,
+                'media_url'     => $mediaUrl,
+                'media_type'    => $mediaType ?? ($mediaUrl ? $request->file('media')?->getMimeType() : null),
+                'delivered'     => true,
+                'read'          => false,
+                'reply_to_id'   => $request->reply_to_id,
+                'reply_to_text' => $request->reply_to_text,
+                'created_at'    => new \DateTime('now', new \DateTimeZone('UTC')),
             ]
         );
 

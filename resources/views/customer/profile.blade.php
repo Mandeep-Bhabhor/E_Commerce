@@ -107,6 +107,19 @@
                 </div>
             </div>
 
+            <!-- Starred Messages Link -->
+            <div class="card border-0 shadow-sm rounded-4 mb-4">
+                <div class="card-body p-5 d-flex justify-content-between align-items-center">
+                    <div>
+                        <h3 class="fw-bold mb-1">★ Starred Messages</h3>
+                        <p class="text-muted mb-0">View messages you've starred in support chat.</p>
+                    </div>
+                    <a href="{{ route('customer.starred') }}" class="btn btn-warning rounded-pill px-4">
+                        View
+                    </a>
+                </div>
+            </div>
+
             <!-- Password -->
             <div class="card border-0 shadow-sm rounded-4 mb-4">
                 <div class="card-body p-5">

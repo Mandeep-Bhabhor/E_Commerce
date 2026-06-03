@@ -132,6 +132,16 @@ Route::middleware('auth:sanctum')->group(function () {
         '/admin/chat/send',
         [AdminChatController::class, 'send']
     );
+
+    Route::get(
+        '/admin/chat/users',
+        [AdminChatController::class, 'chatUsers']
+    );
+
+    Route::get(
+        '/admin/chat/messages/{chatId}',
+        [AdminChatController::class, 'messages']
+    );
 });
 
 use App\Http\Controllers\Api\AboutController;
@@ -150,4 +160,28 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/chat/mark-read', [ReadReceiptController::class, 'markRead']);
 
     Route::get('/chat/unread-count', [ReadReceiptController::class, 'unreadCount']);
+});
+
+use App\Http\Controllers\Api\FavouriteController;
+
+Route::middleware('auth:sanctum')->group(function () {
+
+    // Favourite Users
+    Route::get('/admin/favourites/users', [FavouriteController::class, 'listUsers']);
+    Route::post('/admin/favourites/users', [FavouriteController::class, 'addUser']);
+    Route::post('/admin/favourites/users/remove', [FavouriteController::class, 'removeUser']);
+
+    // Favourite Messages (Starred)
+    Route::get('/admin/favourites/messages', [FavouriteController::class, 'listMessages']);
+    Route::post('/admin/favourites/messages', [FavouriteController::class, 'addMessage']);
+    Route::post('/admin/favourites/messages/remove', [FavouriteController::class, 'removeMessage']);
+});
+
+use App\Http\Controllers\Api\CustomerFavouriteController;
+
+Route::middleware('auth:sanctum')->group(function () {
+
+    Route::get('/customer/favourites/messages', [CustomerFavouriteController::class, 'listMessages']);
+    Route::post('/customer/favourites/messages', [CustomerFavouriteController::class, 'addMessage']);
+    Route::post('/customer/favourites/messages/remove', [CustomerFavouriteController::class, 'removeMessage']);
 });
